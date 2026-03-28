@@ -1,0 +1,1 @@
+import{p as s,u as t,q as a,o as n}from"./index-cy2Fh-17.js";const p=s({__name:"GoogleSuccess",setup(u){const e=t(),o=a();return n(async()=>{await o.autoLogin(),o.user?e.push({name:"dashboard"}):e.push({name:"login"})}),()=>{}}});export{p as default};
