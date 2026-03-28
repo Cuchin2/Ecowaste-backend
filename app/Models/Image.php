@@ -11,6 +11,5 @@ class Image extends Model
         'description',
         'url',
         'order',
-        'delete'
     ];
 }
