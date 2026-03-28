@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ProfileController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Laravel\Socialite\Facades\Socialite;
@@ -73,7 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/avatar', [AvatarController::class, 'update']);
     Route::get('/user', [AuthController::class,'user']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
-
+    Route::put('/profile', [ProfileController::class, 'update']);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
