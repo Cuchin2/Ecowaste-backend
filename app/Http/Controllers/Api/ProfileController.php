@@ -40,4 +40,12 @@ class ProfileController extends Controller
             'profile' => $profile,
         ]);
     }
+    public function show(Request $request)
+    {
+        $user = $request->user();
+        $profile = $user->profile; // Relación hasOne
+        return response()->json([
+            'profile' => $profile
+        ]);
+    }
 }
