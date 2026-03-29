@@ -4,29 +4,38 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Profile;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
 
 class ProfileController extends Controller
 {
     public function update(Request $request)
     {
+        $user = Auth::user();
+
         $request->validate([
             'first_name' => 'required|string|max:255',
             'paternal_lastname' => 'required|string|max:255',
             'maternal_lastname' => 'required|string|max:255',
             'document_type' => ['required', Rule::in(['DNI', 'CE'])],
-            'document_number' => 'required|string|max:20|unique:profiles,document_number,' . Auth::id() . ',user_id',
+            'document_number' => [
+                'required',
+                'string',
+                'max:20',
+                Rule::unique('profiles', 'document_number')
+                    ->ignore($user->profile?->id)  // ✅ permite actualizar el mismo registro
+            ],
             'phone' => 'nullable|string|max:20',
         ]);
 
-        $user = Auth::user();
+        // Actualizar el nombre del usuario (solo se guarda en `name`)
+        $user->name = $request->first_name;
+        $user->save();
 
+        // Crear o actualizar el perfil
         $profile = $user->profile()->updateOrCreate(
             ['user_id' => $user->id],
             $request->only([
-                'first_name',
                 'paternal_lastname',
                 'maternal_lastname',
                 'document_type',
@@ -36,16 +45,19 @@ class ProfileController extends Controller
         );
 
         return response()->json([
-            'message' => 'Perfil actualizado correctamente',
+            'message' => 'Datos actualizados correctamente',
+            'user' => $user,         // ← importante para que el frontend actualice el store
             'profile' => $profile,
         ]);
     }
+
     public function show(Request $request)
     {
         $user = $request->user();
-        $profile = $user->profile; // Relación hasOne
+        $profile = $user->profile; // relación hasOne
         return response()->json([
-            'profile' => $profile
+            'profile' => $profile,
+            'user' => $user,       // ← para que el frontend tenga el nombre
         ]);
     }
 }
