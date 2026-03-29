@@ -46,7 +46,7 @@ class ProfileController extends Controller
 
         return response()->json([
             'message' => 'Datos actualizados correctamente',
-            'user' => $user,         // ← importante para que el frontend actualice el store
+            'user' => $user->fresh(),       // ← importante para que el frontend actualice el store
             'profile' => $profile,
         ]);
     }
