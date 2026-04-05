@@ -17,7 +17,7 @@ class ProfileController extends Controller
             'first_name' => 'required|string|max:255',
             'paternal_lastname' => 'required|string|max:255',
             'maternal_lastname' => 'required|string|max:255',
-            'document_type' => ['required', Rule::in(['DNI', 'CE'])],
+            'document_type' => ['required', Rule::in(['DNI', 'CE','PAS'])],
             'document_number' => [
                 'required',
                 'string',
