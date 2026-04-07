@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\AvatarController;
+use App\Http\Controllers\Api\AddressController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -76,6 +77,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::get('/profile', [ProfileController::class, 'show']);
+
+    Route::apiResource('addresses', AddressController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::patch('addresses/{address}/default', [AddressController::class, 'setDefault']);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
