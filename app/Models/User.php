@@ -34,6 +34,14 @@ class User extends Authenticatable
     {
         return $this->hasOne(Profile::class);
     }
+    public function addresses(): HasMany
+        {
+            return $this->hasMany(Address::class);
+        }
+
+    /**
+     * Relación uno a uno para obtener la dirección predeterminada.
+     */
     public function defaultAddress(): HasOne
     {
         return $this->hasOne(Address::class)->where('is_default', true);
