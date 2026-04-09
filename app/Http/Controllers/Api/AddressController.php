@@ -7,9 +7,10 @@ use App\Models\Address;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
-
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 class AddressController extends Controller
 {
+    use AuthorizesRequests;
     /**
      * Obtener todas las direcciones del usuario autenticado.
      */

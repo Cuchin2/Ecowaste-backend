@@ -10,7 +10,7 @@ class Address extends Model
     protected $fillable = [
         'user_id',
         'name',
-        'address',      // ← renombrado (antes address_line)
+        'address',
         'reference',
         'is_default',
         'verified',
