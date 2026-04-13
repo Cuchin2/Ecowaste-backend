@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\CategoryController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -83,3 +84,6 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
+
+Route::apiResource('categories', CategoryController::class);
+Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional

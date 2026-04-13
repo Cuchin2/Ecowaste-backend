@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-
 class DatabaseSeeder extends Seeder
 {
     /**
@@ -16,11 +15,12 @@ class DatabaseSeeder extends Seeder
         // Llama a tus otros seeders aquí
         $this->call([
             UserSeeder::class, // Esto ejecutará tu UserSeeder
+            CategorySeeder::class,
             // OtrosSeeders::class, // Si tienes más seeders, los añadirías aquí
             // ProductSeeder::class,
             // CategorySeeder::class,
         ]);
-
+        
 
     }
 }
