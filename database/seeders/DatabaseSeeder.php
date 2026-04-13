@@ -14,8 +14,9 @@ class DatabaseSeeder extends Seeder
     {
         // Llama a tus otros seeders aquí
         $this->call([
-            UserSeeder::class, // Esto ejecutará tu UserSeeder
             CategorySeeder::class,
+            UserSeeder::class, // Esto ejecutará tu UserSeeder
+            
             // OtrosSeeders::class, // Si tienes más seeders, los añadirías aquí
             // ProductSeeder::class,
             // CategorySeeder::class,
