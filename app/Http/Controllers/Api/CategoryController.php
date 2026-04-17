@@ -12,11 +12,22 @@ use Illuminate\Support\Str;
 class CategoryController extends Controller
 {
     // Obtener todas las categorías anidadas (para frontend)
-    public function index()
-    {
-        $categories = Category::roots()->with('children.children')->get();
+        public function index()
+        {
+        $categories = Category::roots()
+            ->orderBy('order') // o ->orderByRaw('`order` ASC')
+            ->with([
+                'children' => function ($query) {
+                    $query->orderBy('order');
+                },
+                'children.children' => function ($query) {
+                    $query->orderBy('order');
+                }
+            ])
+            ->get();
+
         return response()->json($categories);
-    }
+        }
 
     // Obtener categorías planas (para selects, etc.)
     public function flat()
