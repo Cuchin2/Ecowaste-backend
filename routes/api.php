@@ -81,7 +81,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('addresses', AddressController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::patch('addresses/{address}/default', [AddressController::class, 'setDefault']);
-});
+    Route::patch('/categories/reorder', [CategoryController::class, 'reorder']);
+    });
 
 Route::post('/register', [RegisterController::class, 'register']);
 

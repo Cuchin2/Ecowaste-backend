@@ -172,4 +172,21 @@ class CategoryController extends Controller
             $newOrder++;
         }
     }
+    public function reorder(Request $request)
+        {
+            $request->validate([
+                'categories' => 'required|array',
+                'categories.*.id' => 'required|exists:categories,id',
+                'categories.*.order' => 'required|integer'
+            ]);
+
+            DB::transaction(function () use ($request) {
+                foreach ($request->categories as $categoryData) {
+                    Category::where('id', $categoryData['id'])
+                        ->update(['order' => $categoryData['order']]);
+                }
+            });
+
+            return response()->json(['message' => 'Orden actualizado correctamente']);
+        }
 }
