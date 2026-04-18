@@ -68,27 +68,69 @@ public function store(Request $request)
         return response()->json($category->load('parent', 'children'));
     }
 
-    public function update(Request $request, Category $category)
-    {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'parent_id' => 'nullable|exists:categories,id',
-            'description' => 'nullable|string',
-            'order' => 'nullable|integer'
-        ]);
+public function update(Request $request, Category $category)
+{
+    $validated = $request->validate([
+        'name' => 'sometimes|string|max:255',
+        'parent_id' => 'nullable|exists:categories,id',
+        'description' => 'nullable|string',
+        'order' => 'nullable|integer'
+    ]);
 
-        if (isset($validated['name'])) {
-            $validated['slug'] = Str::slug($validated['name']);
-        }
+    // Guardar estado original antes de modificar
+    $originalParentId = $category->parent_id;
+    $originalOrder = $category->order;
 
-        if (isset($validated['parent_id'])) {
-            $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
-            $validated['level'] = $parent ? $parent->level + 1 : 0;
-        }
-
-        $category->update($validated);
-        return response()->json($category);
+    // Generar slug si se cambia el nombre
+    if (isset($validated['name'])) {
+        $validated['slug'] = Str::slug($validated['name']);
     }
+
+    // Actualizar nivel si se cambia el padre
+    if (isset($validated['parent_id'])) {
+        $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
+        $validated['level'] = $parent ? $parent->level + 1 : 0;
+    }
+
+    // Realizar la actualización
+    $category->update($validated);
+
+    // =====================================================
+    // Reordenación de grupos después del update
+    // =====================================================
+
+    // Función auxiliar para reordenar hermanos de un parent_id dado
+    $reorderSiblings = function ($parentId) {
+        $siblings = Category::where('parent_id', $parentId)
+            ->orderBy('order')
+            ->get();
+        $newOrder = 1;
+        foreach ($siblings as $sibling) {
+            if ($sibling->order != $newOrder) {
+                $sibling->order = $newOrder;
+                $sibling->saveQuietly(); // evitar recursión de eventos
+            }
+            $newOrder++;
+        }
+    };
+
+    // Caso 1: Cambió el parent_id
+    if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
+        // Reordenar el grupo original (del que se fue)
+        if ($originalParentId !== null) {
+            $reorderSiblings($originalParentId);
+        }
+        // Reordenar el grupo nuevo (al que llegó)
+        $reorderSiblings($validated['parent_id']);
+    }
+    // Caso 2: No cambió parent_id pero pudo cambiar el order o el orden se desincronizó
+    else {
+        // Reordenar el grupo actual para asegurar secuencia 1..N
+        $reorderSiblings($category->parent_id);
+    }
+
+    return response()->json($category);
+}
 
     public function destroy(Category $category)
     {
