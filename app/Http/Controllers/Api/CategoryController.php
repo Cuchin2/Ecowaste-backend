@@ -1,21 +1,20 @@
 <?php
 
-// app/Http/Controllers/Api/CategoryController.php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
     // Obtener todas las categorías anidadas (para frontend)
-        public function index()
-        {
+    public function index()
+    {
         $categories = Category::roots()
-            ->orderBy('order') // o ->orderByRaw('`order` ASC')
+            ->orderBy('order')
             ->with([
                 'children' => function ($query) {
                     $query->orderBy('order');
@@ -27,7 +26,7 @@ class CategoryController extends Controller
             ->get();
 
         return response()->json($categories);
-        }
+    }
 
     // Obtener categorías planas (para selects, etc.)
     public function flat()
@@ -36,126 +35,141 @@ class CategoryController extends Controller
         return response()->json($categories);
     }
 
-public function store(Request $request)
-{
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'parent_id' => 'nullable|exists:categories,id',
-        'description' => 'nullable|string',
-        'order' => 'nullable|integer'
-    ]);
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'parent_id' => 'nullable|exists:categories,id',
+            'description' => 'nullable|string',
+            'order' => 'nullable|integer|min:1'
+        ]);
 
-    $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
-    $level = $parent ? $parent->level + 1 : 0;
+        $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
+        $level = $parent ? $parent->level + 1 : 0;
 
-    $validated['slug'] = Str::slug($validated['name']);
-    $validated['level'] = $level;
+        $validated['slug'] = Str::slug($validated['name']);
+        $validated['level'] = $level;
 
-    // Si no se proporciona 'order' en la petición, lo calculamos
-    if (!isset($validated['order'])) {
-        $maxOrder = Category::where('parent_id', $validated['parent_id'])
-            ->where('level', $level)
-            ->max('order');
-        $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
+        // Si no se proporciona 'order', calcular el siguiente disponible
+        if (!isset($validated['order'])) {
+            $maxOrder = Category::where('parent_id', $validated['parent_id'])
+                ->where('level', $level)
+                ->max('order');
+            $validated['order'] = is_null($maxOrder) ? 1 : $maxOrder + 1;
+        }
+
+        $category = Category::create($validated);
+        return response()->json($category, 201);
     }
-
-    $category = Category::create($validated);
-    return response()->json($category, 201);
-}
 
     public function show(Category $category)
     {
         return response()->json($category->load('parent', 'children'));
     }
 
-public function update(Request $request, Category $category)
-{
-    $validated = $request->validate([
-        'name' => 'sometimes|string|max:255',
-        'parent_id' => 'nullable|exists:categories,id',
-        'description' => 'nullable|string',
-        'order' => 'nullable|integer'
-    ]);
+    public function update(Request $request, Category $category)
+    {
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'parent_id' => 'nullable|exists:categories,id',
+            'description' => 'nullable|string',
+            'order' => 'nullable|integer|min:1'
+        ]);
 
-    // Guardar estado original antes de modificar
-    $originalParentId = $category->parent_id;
-    $originalOrder = $category->order;
+        DB::beginTransaction();
 
-    // Generar slug si se cambia el nombre
-    if (isset($validated['name'])) {
-        $validated['slug'] = Str::slug($validated['name']);
+        try {
+            $originalParentId = $category->parent_id;
+            $originalOrder = $category->order; // se usará más adelante si es necesario
+
+            // Generar slug si se cambia el nombre
+            if (isset($validated['name'])) {
+                $validated['slug'] = Str::slug($validated['name']);
+            }
+
+            // Actualizar nivel si se cambia el padre
+            if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
+                $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
+                $validated['level'] = $parent ? $parent->level + 1 : 0;
+            }
+
+            // Si se ha enviado un 'order' específico, lo respetamos.
+            // Si no se envía, mantenemos el actual (no recalcular automáticamente a menos que cambie el padre)
+            if (!isset($validated['order'])) {
+                // Si cambió el padre, la categoría se moverá al final del nuevo grupo
+                if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
+                    $newParentId = $validated['parent_id'];
+                    $newLevel = $validated['level'];
+                    $maxOrder = Category::where('parent_id', $newParentId)
+                        ->where('level', $newLevel)
+                        ->max('order');
+                    $validated['order'] = is_null($maxOrder) ? 1 : $maxOrder + 1;
+                }
+                // Si no cambió padre y no se envió order, mantenemos el mismo order
+            }
+
+            // Realizar la actualización
+            $category->update($validated);
+
+            // Reordenar los grupos afectados
+            $this->reorderSiblings($originalParentId); // grupo antiguo (si aplica)
+
+            $newParentId = $category->parent_id; // después del update
+            $this->reorderSiblings($newParentId); // grupo nuevo
+
+            DB::commit();
+
+            return response()->json($category->fresh());
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Error al actualizar la categoría: ' . $e->getMessage()], 500);
+        }
     }
 
-    // Actualizar nivel si se cambia el padre
-    if (isset($validated['parent_id'])) {
-        $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
-        $validated['level'] = $parent ? $parent->level + 1 : 0;
+    public function destroy(Category $category)
+    {
+        // No permitir eliminar si tiene hijos
+        if ($category->children()->count() > 0) {
+            return response()->json(['error' => 'No se puede eliminar una categoría con subcategorías'], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $parentId = $category->parent_id;
+            $category->delete();
+
+            // Reordenar las hermanas restantes
+            $this->reorderSiblings($parentId);
+
+            DB::commit();
+
+            return response()->json(['message' => 'Categoría eliminada y reordenada correctamente']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
+        }
     }
 
-    // Realizar la actualización
-    $category->update($validated);
-
-    // =====================================================
-    // Reordenación de grupos después del update
-    // =====================================================
-
-    // Función auxiliar para reordenar hermanos de un parent_id dado
-    $reorderSiblings = function ($parentId) {
+    /**
+     * Reordena secuencialmente (1,2,3...) todas las categorías con el mismo parent_id.
+     *
+     * @param int|null $parentId
+     * @return void
+     */
+    private function reorderSiblings($parentId)
+    {
         $siblings = Category::where('parent_id', $parentId)
             ->orderBy('order')
             ->get();
+
         $newOrder = 1;
         foreach ($siblings as $sibling) {
             if ($sibling->order != $newOrder) {
                 $sibling->order = $newOrder;
-                $sibling->saveQuietly(); // evitar recursión de eventos
+                $sibling->save();
             }
             $newOrder++;
         }
-    };
-
-    // Caso 1: Cambió el parent_id
-    if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
-        // Reordenar el grupo original (del que se fue)
-        if ($originalParentId !== null) {
-            $reorderSiblings($originalParentId);
-        }
-        // Reordenar el grupo nuevo (al que llegó)
-        $reorderSiblings($validated['parent_id']);
-    }
-    // Caso 2: No cambió parent_id pero pudo cambiar el order o el orden se desincronizó
-    else {
-        // Reordenar el grupo actual para asegurar secuencia 1..N
-        $reorderSiblings($category->parent_id);
-    }
-
-    return response()->json($category);
-}
-
-    public function destroy(Category $category)
-    {
-        // No permitir eliminar si tiene hijos (opcional, pero lo dejo)
-        if ($category->children()->count() > 0) {
-            return response()->json(['error' => 'Cannot delete category with children'], 422);
-        }
-
-        $parentId = $category->parent_id;
-        
-        // Eliminar la categoría
-        $category->delete();
-
-        // Reordenar las categorías hermanas restantes (mismo parent_id)
-        $siblings = Category::where('parent_id', $parentId)
-                            ->orderBy('order')
-                            ->get();
-
-        $newOrder = 1;
-        foreach ($siblings as $sibling) {
-            $sibling->order = $newOrder;
-            $sibling->save();
-            $newOrder++;
-        }
-
-        return response()->json(['message' => 'Deleted and reordered']);
     }
 }
