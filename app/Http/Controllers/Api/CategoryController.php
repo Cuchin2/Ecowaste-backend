@@ -92,11 +92,28 @@ public function store(Request $request)
 
     public function destroy(Category $category)
     {
-        // Opcional: verificar si tiene hijos para no eliminarlo (o usar cascade)
+        // No permitir eliminar si tiene hijos (opcional, pero lo dejo)
         if ($category->children()->count() > 0) {
             return response()->json(['error' => 'Cannot delete category with children'], 422);
         }
+
+        $parentId = $category->parent_id;
+        
+        // Eliminar la categoría
         $category->delete();
-        return response()->json(['message' => 'Deleted']);
+
+        // Reordenar las categorías hermanas restantes (mismo parent_id)
+        $siblings = Category::where('parent_id', $parentId)
+                            ->orderBy('order')
+                            ->get();
+
+        $newOrder = 1;
+        foreach ($siblings as $sibling) {
+            $sibling->order = $newOrder;
+            $sibling->save();
+            $newOrder++;
+        }
+
+        return response()->json(['message' => 'Deleted and reordered']);
     }
 }
