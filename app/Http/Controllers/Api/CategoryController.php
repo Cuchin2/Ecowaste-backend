@@ -36,24 +36,32 @@ class CategoryController extends Controller
         return response()->json($categories);
     }
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'parent_id' => 'nullable|exists:categories,id',
-            'description' => 'nullable|string',
-            'order' => 'nullable|integer'
-        ]);
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'parent_id' => 'nullable|exists:categories,id',
+        'description' => 'nullable|string',
+        'order' => 'nullable|integer'
+    ]);
 
-        $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
-        $level = $parent ? $parent->level + 1 : 0;
+    $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
+    $level = $parent ? $parent->level + 1 : 0;
 
-        $validated['slug'] = Str::slug($validated['name']);
-        $validated['level'] = $level;
+    $validated['slug'] = Str::slug($validated['name']);
+    $validated['level'] = $level;
 
-        $category = Category::create($validated);
-        return response()->json($category, 201);
+    // Si no se proporciona 'order' en la petición, lo calculamos
+    if (!isset($validated['order'])) {
+        $maxOrder = Category::where('parent_id', $validated['parent_id'])
+            ->where('level', $level)
+            ->max('order');
+        $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
     }
+
+    $category = Category::create($validated);
+    return response()->json($category, 201);
+}
 
     public function show(Category $category)
     {
