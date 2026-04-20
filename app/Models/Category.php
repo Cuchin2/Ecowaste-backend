@@ -13,7 +13,11 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'description', 'parent_id', 'level', 'order'];
+    protected $fillable = ['name', 'slug', 'description', 'parent_id', 'level', 'order', 'is_active'];
+
+    protected $casts = [
+    'is_active' => 'boolean',
+];
 
     // Relación con el padre
     public function parent(): BelongsTo
