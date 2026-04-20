@@ -19,7 +19,6 @@ public function index()
         $isAdmin = $user->hasRole('admin');
     }
 
-    // 🔥 IMPORTANTE: Inicializar $query
     $query = Category::roots()->orderBy('order');
 
     if (!$isAdmin) {
