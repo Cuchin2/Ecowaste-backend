@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\RegisterController;
 use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\PruebaController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -82,9 +83,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('addresses', AddressController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::patch('addresses/{address}/default', [AddressController::class, 'setDefault']);
     Route::patch('/categories/reorder', [CategoryController::class, 'reorder']);
-    });
+
+    Route::get('/pruebas/backend', [PruebaController::class, 'index']);
+});
 
 Route::post('/register', [RegisterController::class, 'register']);
 
 Route::apiResource('categories', CategoryController::class);
 Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
+
+/* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    
+}); */

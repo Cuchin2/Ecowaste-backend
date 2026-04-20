@@ -8,9 +8,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany; // ← Importante: desde Illuminate
+use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable; // ✅ AGREGAR HasApiTokens
+    use HasApiTokens, HasFactory, Notifiable, HasRoles; // ✅ AGREGAR HasApiTokens
 
     protected $fillable = [
         'name',

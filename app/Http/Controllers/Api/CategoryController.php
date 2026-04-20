@@ -13,18 +13,24 @@ class CategoryController extends Controller
     // Obtener todas las categorías anidadas (para frontend)
     public function index()
     {
-        $categories = Category::roots()
-            ->orderBy('order')
-            ->with([
-                'children' => function ($query) {
-                    $query->orderBy('order');
-                },
-                'children.children' => function ($query) {
-                    $query->orderBy('order');
-                }
-            ])
-            ->get();
-
+    $isAdmin = auth()->check() && auth()->user()->hasRole('admin'); // or can('view all categories')
+        $query = Category::roots()->orderBy('order');
+        
+        if (!$isAdmin) {
+            $query->where('is_active', true);
+        }
+        
+        $categories = $query->with([
+            'children' => function ($q) use ($isAdmin) {
+                $q->orderBy('order');
+                if (!$isAdmin) $q->where('is_active', true);
+            },
+            'children.children' => function ($q) use ($isAdmin) {
+                $q->orderBy('order');
+                if (!$isAdmin) $q->where('is_active', true);
+            }
+        ])->get();
+        
         return response()->json($categories);
     }
 
