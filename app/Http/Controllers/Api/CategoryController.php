@@ -47,7 +47,8 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
             'parent_id' => 'nullable|exists:categories,id',
             'description' => 'nullable|string',
-            'order' => 'nullable|integer|min:1'
+            'order' => 'nullable|integer|min:1',
+            'is_active' => 'sometimes|boolean'  // ← agregar
         ]);
 
         $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
@@ -79,7 +80,8 @@ class CategoryController extends Controller
             'name' => 'sometimes|string|max:255',
             'parent_id' => 'nullable|exists:categories,id',
             'description' => 'nullable|string',
-            'order' => 'nullable|integer|min:1'
+            'order' => 'nullable|integer|min:1',
+            'is_active' => 'sometimes|boolean'  // ← agregar
         ]);
 
         DB::beginTransaction();
