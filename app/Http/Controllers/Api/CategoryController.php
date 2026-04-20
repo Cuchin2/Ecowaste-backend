@@ -11,31 +11,34 @@ use Illuminate\Support\Str;
 class CategoryController extends Controller
 {
     // Obtener todas las categorías anidadas (para frontend)
-    public function index()
-    {
-      $isAdmin = false;
-        if (auth()->guard('sanctum')->check()) {
-            $user = auth()->guard('sanctum')->user();
-            $isAdmin = $user->hasRole('admin');
-        }
-        
-        if (!$isAdmin) {
-            $query->where('is_active', true);
-        }
-        
-        $categories = $query->with([
-            'children' => function ($q) use ($isAdmin) {
-                $q->orderBy('order');
-                if (!$isAdmin) $q->where('is_active', true);
-            },
-            'children.children' => function ($q) use ($isAdmin) {
-                $q->orderBy('order');
-                if (!$isAdmin) $q->where('is_active', true);
-            }
-        ])->get();
-        
-        return response()->json($categories);
+public function index()
+{
+    $isAdmin = false;
+    if (auth()->guard('sanctum')->check()) {
+        $user = auth()->guard('sanctum')->user();
+        $isAdmin = $user->hasRole('admin');
     }
+
+    // 🔥 IMPORTANTE: Inicializar $query
+    $query = Category::roots()->orderBy('order');
+
+    if (!$isAdmin) {
+        $query->where('is_active', true);
+    }
+
+    $categories = $query->with([
+        'children' => function ($q) use ($isAdmin) {
+            $q->orderBy('order');
+            if (!$isAdmin) $q->where('is_active', true);
+        },
+        'children.children' => function ($q) use ($isAdmin) {
+            $q->orderBy('order');
+            if (!$isAdmin) $q->where('is_active', true);
+        }
+    ])->get();
+
+    return response()->json($categories);
+}
 
     // Obtener categorías planas (para selects, etc.)
     public function flat()
