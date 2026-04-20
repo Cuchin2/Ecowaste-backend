@@ -83,12 +83,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('addresses', AddressController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::patch('addresses/{address}/default', [AddressController::class, 'setDefault']);
     Route::patch('/categories/reorder', [CategoryController::class, 'reorder']);
-
+    Route::apiResource('categories', CategoryController::class);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
-
-Route::apiResource('categories', CategoryController::class);
+Route::get('/categories/public', [CategoryController::class, 'publicIndex']);
 Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
 Route::get('/pruebas/backend', [PruebaController::class, 'index']);
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {

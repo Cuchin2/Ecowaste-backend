@@ -10,9 +10,24 @@ use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
-    // Obtener todas las categorías anidadas (para frontend)
-public function index()
-{
+    public function publicIndex()
+    {
+        $categories = Category::roots()
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->with([
+                'children' => function ($q) {
+                    $q->where('is_active', true)->orderBy('order');
+                },
+                'children.children' => function ($q) {
+                    $q->where('is_active', true)->orderBy('order');
+                }
+            ])->get();
+
+        return response()->json($categories);
+    }
+    public function index()
+    {
     $isAdmin = false;
     if (auth()->guard('sanctum')->check()) {
         $user = auth()->guard('sanctum')->user();
