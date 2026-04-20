@@ -13,8 +13,11 @@ class CategoryController extends Controller
     // Obtener todas las categorías anidadas (para frontend)
     public function index()
     {
-    $isAdmin = auth()->check() && auth()->user()->hasRole('admin'); // or can('view all categories')
-        $query = Category::roots()->orderBy('order');
+      $isAdmin = false;
+        if (auth()->guard('sanctum')->check()) {
+            $user = auth()->guard('sanctum')->user();
+            $isAdmin = $user->hasRole('admin');
+        }
         
         if (!$isAdmin) {
             $query->where('is_active', true);
