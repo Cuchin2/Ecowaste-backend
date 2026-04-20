@@ -84,14 +84,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('addresses/{address}/default', [AddressController::class, 'setDefault']);
     Route::patch('/categories/reorder', [CategoryController::class, 'reorder']);
 
-    Route::get('/pruebas/backend', [PruebaController::class, 'index']);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
 
 Route::apiResource('categories', CategoryController::class);
 Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
-
+Route::get('/pruebas/backend', [PruebaController::class, 'index']);
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
 }); */
