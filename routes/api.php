@@ -87,7 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
-Route::get('/categories/public', [CategoryController::class, 'publicIndex']);
+Route::get('/categoriespublic', [CategoryController::class, 'publicIndex']);
 Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
 /* Route::get('/pruebas/backend', [PruebaController::class, 'index']); */
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
