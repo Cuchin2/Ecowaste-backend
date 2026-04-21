@@ -12,6 +12,9 @@ use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
 {
+    /**
+     * Categorías públicas (para visitantes, solo activas)
+     */
     public function publicIndex()
     {
         $categories = Category::roots()
@@ -26,43 +29,52 @@ class CategoryController extends Controller
                 }
             ])->get();
 
-        return response()->json($categories);
+        return response()->json($this->transformImageUrls($categories));
     }
+
+    /**
+     * Categorías para administración (con permisos)
+     */
     public function index()
     {
-    $isAdmin = false;
-    if (auth()->guard('sanctum')->check()) {
-        $user = auth()->guard('sanctum')->user();
-        $isAdmin = $user->hasRole('admin');
-    }
-
-    $query = Category::roots()->orderBy('order');
-
-    if (!$isAdmin) {
-        $query->where('is_active', true);
-    }
-
-    $categories = $query->with([
-        'children' => function ($q) use ($isAdmin) {
-            $q->orderBy('order');
-            if (!$isAdmin) $q->where('is_active', true);
-        },
-        'children.children' => function ($q) use ($isAdmin) {
-            $q->orderBy('order');
-            if (!$isAdmin) $q->where('is_active', true);
+        $isAdmin = false;
+        if (auth()->guard('sanctum')->check()) {
+            $user = auth()->guard('sanctum')->user();
+            $isAdmin = $user->hasRole('admin');
         }
-    ])->get();
 
-    return response()->json($categories);
-}
+        $query = Category::roots()->orderBy('order');
 
-    // Obtener categorías planas (para selects, etc.)
+        if (!$isAdmin) {
+            $query->where('is_active', true);
+        }
+
+        $categories = $query->with([
+            'children' => function ($q) use ($isAdmin) {
+                $q->orderBy('order');
+                if (!$isAdmin) $q->where('is_active', true);
+            },
+            'children.children' => function ($q) use ($isAdmin) {
+                $q->orderBy('order');
+                if (!$isAdmin) $q->where('is_active', true);
+            }
+        ])->get();
+
+        return response()->json($this->transformImageUrls($categories));
+    }
+
+    /**
+     * Categorías planas (para selects)
+     */
     public function flat()
     {
         $categories = Category::orderBy('level')->orderBy('order')->get();
-        return response()->json($categories);
+        return response()->json($this->transformImageUrls($categories));
     }
 
+    /**
+     * Crear nueva categoría
+     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -70,23 +82,23 @@ class CategoryController extends Controller
             'parent_id' => 'nullable|exists:categories,id',
             'description' => 'nullable|string',
             'order' => 'nullable|integer|min:1',
-            'is_active' => 'sometimes|boolean',  // ← agregar
+            'is_active' => 'sometimes|boolean',
             'image' => 'nullable|file|image|max:2048'
         ]);
+
         // Procesar imagen si se subió
         if ($request->hasFile('image')) {
             $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
         } else {
-            $validated['image'] = null; // o mantener el valor existente si quieres
+            $validated['image'] = null;
         }
-        /////
+
         $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
         $level = $parent ? $parent->level + 1 : 0;
 
         $validated['slug'] = Str::slug($validated['name']);
         $validated['level'] = $level;
 
-        // Si no se proporciona 'order', calcular el siguiente disponible
         if (!isset($validated['order'])) {
             $maxOrder = Category::where('parent_id', $validated['parent_id'])
                 ->where('level', $level)
@@ -95,17 +107,26 @@ class CategoryController extends Controller
         }
 
         $category = Category::create($validated);
-        return response()->json($category, 201);
+
+        // Devolver la categoría con la URL absoluta de la imagen
+        return response()->json($this->formatCategory($category), 201);
     }
 
+    /**
+     * Mostrar una categoría específica
+     */
     public function show(Category $category)
     {
-        return response()->json($category->load('parent', 'children'));
+        $category->load('parent', 'children');
+        return response()->json($this->formatCategory($category));
     }
 
+    /**
+     * Actualizar categoría
+     */
     public function update(Request $request, Category $category)
     {
-        // Convertir parent_id vacío a null antes de validar
+        // Convertir parent_id vacío a null
         if ($request->has('parent_id') && $request->input('parent_id') === '') {
             $request->merge(['parent_id' => null]);
         }
@@ -125,8 +146,7 @@ class CategoryController extends Controller
             if ($request->hasFile('image')) {
                 // Eliminar imagen anterior si existe
                 if ($category->image) {
-                    $relativePath = str_replace('/storage/', '', $category->image);
-                    $relativePath = ltrim($relativePath, '/');
+                    $relativePath = $this->getRelativePath($category->image);
                     Storage::disk('public')->delete($relativePath);
                 }
                 $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
@@ -136,41 +156,43 @@ class CategoryController extends Controller
 
             $originalParentId = $category->parent_id;
 
-            // Generar slug si se cambia el nombre
             if (isset($validated['name'])) {
                 $validated['slug'] = Str::slug($validated['name']);
             }
 
-            // Actualizar nivel si se cambia el padre
             if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
                 $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
                 $validated['level'] = $parent ? $parent->level + 1 : 0;
             }
 
-            // Asignar order si cambió el padre y no se envió explícitamente
             if (!isset($validated['order'])) {
                 if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
                     $newParentId = $validated['parent_id'];
-                    $newLevel = $validated['level']; // ya calculado
-                    $maxOrder = Category::where('parent_id', $newParentId)->where('level', $newLevel)->max('order');
+                    $newLevel = $validated['level'];
+                    $maxOrder = Category::where('parent_id', $newParentId)
+                        ->where('level', $newLevel)
+                        ->max('order');
                     $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
                 }
             }
 
             $category->update($validated);
 
-            // Reordenar grupos afectados
             $this->reorderSiblings($originalParentId);
             $this->reorderSiblings($category->parent_id);
 
             DB::commit();
-            return response()->json($category->fresh());
+
+            return response()->json($this->formatCategory($category->fresh()));
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Error al actualizar la categoría: ' . $e->getMessage()], 500);
         }
     }
 
+    /**
+     * Eliminar categoría
+     */
     public function destroy(Category $category)
     {
         if ($category->children()->count() > 0) {
@@ -178,13 +200,11 @@ class CategoryController extends Controller
         }
 
         if ($category->image) {
-            $relativePath = str_replace('/storage/', '', $category->image);
-            $relativePath = ltrim($relativePath, '/');
+            $relativePath = $this->getRelativePath($category->image);
             Storage::disk('public')->delete($relativePath);
         }
 
         DB::beginTransaction();
-
         try {
             $parentId = $category->parent_id;
             $category->delete();
@@ -198,10 +218,7 @@ class CategoryController extends Controller
     }
 
     /**
-     * Reordena secuencialmente (1,2,3...) todas las categorías con el mismo parent_id.
-     *
-     * @param int|null $parentId
-     * @return void
+     * Reordenar hermanas de un mismo padre
      */
     private function reorderSiblings($parentId)
     {
@@ -218,39 +235,94 @@ class CategoryController extends Controller
             $newOrder++;
         }
     }
+
+    /**
+     * Reordenar categorías (drag & drop)
+     */
     public function reorder(Request $request)
-        {
-            $request->validate([
-                'categories' => 'required|array',
-                'categories.*.id' => 'required|exists:categories,id',
-                'categories.*.order' => 'required|integer'
-            ]);
+    {
+        $request->validate([
+            'categories' => 'required|array',
+            'categories.*.id' => 'required|exists:categories,id',
+            'categories.*.order' => 'required|integer'
+        ]);
 
-            DB::transaction(function () use ($request) {
-                foreach ($request->categories as $categoryData) {
-                    Category::where('id', $categoryData['id'])
-                        ->update(['order' => $categoryData['order']]);
-                }
-            });
+        DB::transaction(function () use ($request) {
+            foreach ($request->categories as $categoryData) {
+                Category::where('id', $categoryData['id'])
+                    ->update(['order' => $categoryData['order']]);
+            }
+        });
 
-            return response()->json(['message' => 'Orden actualizado correctamente']);
-        }
+        return response()->json(['message' => 'Orden actualizado correctamente']);
+    }
 
+    /**
+     * Subir y convertir imagen a WebP
+     */
     private function uploadAndConvertToWebp($file, $folder = 'categories')
     {
         if (!$file) return null;
 
-        $manager = ImageManager::gd(); // o ImageManager::imagick()
+        $manager = ImageManager::gd();
         $image = $manager->read($file);
 
-        // Generar nombre único
         $filename = Str::uuid() . '.webp';
         $path = $folder . '/' . $filename;
 
-        // Guardar en storage/app/public/categories/xxx.webp
         $image->toWebp()->save(storage_path('app/public/' . $path));
 
-        // Retornar la ruta accesible desde el frontend
-        return Storage::url($path);
+        // Retornar la ruta relativa (para luego usar asset())
+        return $path;
+    }
+
+    /**
+     * Convierte una ruta de imagen a URL absoluta
+     */
+    private function getImageUrl($path)
+    {
+        if (!$path) {
+            return null;
+        }
+        // Si ya es una URL absoluta (http:// o https://), la devolvemos tal cual
+        if (filter_var($path, FILTER_VALIDATE_URL)) {
+            return $path;
+        }
+        // De lo contrario, asumimos que es una ruta relativa dentro de storage
+        return asset('storage/' . ltrim($path, '/'));
+    }
+
+    /**
+     * Obtiene la ruta relativa para eliminar archivos (quita /storage/ y prefijos)
+     */
+    private function getRelativePath($path)
+    {
+        // Si la ruta contiene 'storage/', la extraemos
+        $relative = str_replace('/storage/', '', $path);
+        $relative = ltrim($relative, '/');
+        return $relative;
+    }
+
+    /**
+     * Formatea una categoría individual añadiendo image_url
+     */
+    private function formatCategory(Category $category)
+    {
+        $category->image_url = $this->getImageUrl($category->image);
+        return $category;
+    }
+
+    /**
+     * Transforma recursivamente una colección de categorías añadiendo image_url
+     */
+    private function transformImageUrls($categories)
+    {
+        return $categories->map(function ($category) {
+            $category->image_url = $this->getImageUrl($category->image);
+            if ($category->children) {
+                $category->children = $this->transformImageUrls($category->children);
+            }
+            return $category;
+        });
     }
 }
