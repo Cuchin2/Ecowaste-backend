@@ -276,12 +276,13 @@ class CategoryController extends Controller
     /**
      * Convierte una ruta de imagen a URL absoluta usando Storage::url()
      */
-    private function getImageUrl($path)
-    {
-        if (!$path) return null;
-        if (filter_var($path, FILTER_VALIDATE_URL)) return $path;
-        return Storage::url($path); // ← esto es lo que genera URL absoluta
-    }
+private function getImageUrl($path)
+{
+    if (!$path) return null;
+    // Forzar URL absoluta usando la configuración de APP_URL
+    $baseUrl = rtrim(config('app.url'), '/');
+    return $baseUrl . '/storage/' . ltrim($path, '/');
+}
 
     /**
      * Formatea una categoría individual añadiendo image_url
