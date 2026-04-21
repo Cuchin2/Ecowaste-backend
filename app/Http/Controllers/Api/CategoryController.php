@@ -7,6 +7,8 @@ use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Intervention\Image\ImageManager;
+use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
 {
@@ -68,9 +70,16 @@ class CategoryController extends Controller
             'parent_id' => 'nullable|exists:categories,id',
             'description' => 'nullable|string',
             'order' => 'nullable|integer|min:1',
-            'is_active' => 'sometimes|boolean'  // ← agregar
+            'is_active' => 'sometimes|boolean',  // ← agregar
+            'image' => 'nullable|file|image|max:2048'
         ]);
-
+        // Procesar imagen si se subió
+        if ($request->hasFile('image')) {
+            $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
+        } else {
+            $validated['image'] = null; // o mantener el valor existente si quieres
+        }
+        /////
         $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
         $level = $parent ? $parent->level + 1 : 0;
 
@@ -101,12 +110,26 @@ class CategoryController extends Controller
             'parent_id' => 'nullable|exists:categories,id',
             'description' => 'nullable|string',
             'order' => 'nullable|integer|min:1',
-            'is_active' => 'sometimes|boolean'  // ← agregar
+            'is_active' => 'sometimes|boolean',  // ← agregar
+            'image' => 'nullable|file|image|max:2048'
         ]);
 
         DB::beginTransaction();
 
         try {
+            // Manejar imagen nueva
+            if ($request->hasFile('image')) {
+                // Eliminar imagen anterior si existe
+                if ($category->image) {
+                    $oldPath = str_replace('/storage/', 'public/', $category->image);
+                    Storage::delete($oldPath);
+                }
+                $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
+            } else {
+                // Si no se envía nueva imagen, mantener la existente (no se incluye en validated)
+                unset($validated['image']);
+            }
+            ///
             $originalParentId = $category->parent_id;
             $originalOrder = $category->order; // se usará más adelante si es necesario
 
@@ -160,7 +183,10 @@ class CategoryController extends Controller
         if ($category->children()->count() > 0) {
             return response()->json(['error' => 'No se puede eliminar una categoría con subcategorías'], 422);
         }
-
+        if ($category->image) {
+            $oldPath = str_replace('/storage/', 'public/', $category->image);
+            Storage::delete($oldPath);
+        }
         DB::beginTransaction();
 
         try {
@@ -217,4 +243,22 @@ class CategoryController extends Controller
 
             return response()->json(['message' => 'Orden actualizado correctamente']);
         }
+
+    private function uploadAndConvertToWebp($file, $folder = 'categories')
+    {
+        if (!$file) return null;
+
+        $manager = ImageManager::gd(); // o ImageManager::imagick()
+        $image = $manager->read($file);
+
+        // Generar nombre único
+        $filename = Str::uuid() . '.webp';
+        $path = $folder . '/' . $filename;
+
+        // Guardar en storage/app/public/categories/xxx.webp
+        $image->toWebp()->save(storage_path('app/public/' . $path));
+
+        // Retornar la ruta accesible desde el frontend
+        return Storage::url($path);
+    }
 }
