@@ -278,15 +278,9 @@ class CategoryController extends Controller
      */
     private function getImageUrl($path)
     {
-        if (!$path) {
-            return null;
-        }
-        // Si ya es una URL absoluta, devolverla tal cual
-        if (filter_var($path, FILTER_VALIDATE_URL)) {
-            return $path;
-        }
-        // Usar Storage::url() para generar la URL absoluta basada en el disco 'public'
-        return Storage::url($path);
+        if (!$path) return null;
+        if (filter_var($path, FILTER_VALIDATE_URL)) return $path;
+        return Storage::url($path); // ← esto es lo que genera URL absoluta
     }
 
     /**
