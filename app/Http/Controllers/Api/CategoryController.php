@@ -108,7 +108,6 @@ class CategoryController extends Controller
 
         $category = Category::create($validated);
 
-        // Devolver la categoría con la URL absoluta de la imagen
         return response()->json($this->formatCategory($category), 201);
     }
 
@@ -144,10 +143,9 @@ class CategoryController extends Controller
         try {
             // Manejar imagen nueva
             if ($request->hasFile('image')) {
-                // Eliminar imagen anterior si existe
+                // Eliminar imagen anterior si existe (ruta relativa)
                 if ($category->image) {
-                    $relativePath = $this->getRelativePath($category->image);
-                    Storage::disk('public')->delete($relativePath);
+                    Storage::disk('public')->delete($category->image);
                 }
                 $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
             } else {
@@ -200,8 +198,7 @@ class CategoryController extends Controller
         }
 
         if ($category->image) {
-            $relativePath = $this->getRelativePath($category->image);
-            Storage::disk('public')->delete($relativePath);
+            Storage::disk('public')->delete($category->image);
         }
 
         DB::beginTransaction();
@@ -272,35 +269,24 @@ class CategoryController extends Controller
 
         $image->toWebp()->save(storage_path('app/public/' . $path));
 
-        // Retornar la ruta relativa (para luego usar asset())
+        // Retornar la ruta relativa (ej. categories/uuid.webp)
         return $path;
     }
 
     /**
-     * Convierte una ruta de imagen a URL absoluta
+     * Convierte una ruta de imagen a URL absoluta usando Storage::url()
      */
     private function getImageUrl($path)
     {
         if (!$path) {
             return null;
         }
-        // Si ya es una URL absoluta (http:// o https://), la devolvemos tal cual
+        // Si ya es una URL absoluta, devolverla tal cual
         if (filter_var($path, FILTER_VALIDATE_URL)) {
             return $path;
         }
-        // De lo contrario, asumimos que es una ruta relativa dentro de storage
-        return asset('storage/' . ltrim($path, '/'));
-    }
-
-    /**
-     * Obtiene la ruta relativa para eliminar archivos (quita /storage/ y prefijos)
-     */
-    private function getRelativePath($path)
-    {
-        // Si la ruta contiene 'storage/', la extraemos
-        $relative = str_replace('/storage/', '', $path);
-        $relative = ltrim($relative, '/');
-        return $relative;
+        // Usar Storage::url() para generar la URL absoluta basada en el disco 'public'
+        return Storage::url($path);
     }
 
     /**
