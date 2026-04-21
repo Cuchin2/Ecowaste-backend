@@ -123,70 +123,81 @@ class CategoryController extends Controller
     /**
      * Actualizar categoría
      */
-    public function update(Request $request, Category $category)
-    {
-        // Convertir parent_id vacío a null
-        if ($request->has('parent_id') && $request->input('parent_id') === '') {
-            $request->merge(['parent_id' => null]);
-        }
-
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'parent_id' => 'nullable|exists:categories,id',
-            'description' => 'nullable|string',
-            'order' => 'nullable|integer|min:1',
-            'is_active' => 'sometimes|boolean',
-            'image' => 'nullable|file|image|max:2048'
-        ]);
-
-        DB::beginTransaction();
-        try {
-            // Manejar imagen nueva
-            if ($request->hasFile('image')) {
-                // Eliminar imagen anterior si existe (ruta relativa)
-                if ($category->image) {
-                    Storage::disk('public')->delete($category->image);
-                }
-                $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
-            } else {
-                unset($validated['image']);
-            }
-
-            $originalParentId = $category->parent_id;
-
-            if (isset($validated['name'])) {
-                $validated['slug'] = Str::slug($validated['name']);
-            }
-
-            if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
-                $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
-                $validated['level'] = $parent ? $parent->level + 1 : 0;
-            }
-
-            if (!isset($validated['order'])) {
-                if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
-                    $newParentId = $validated['parent_id'];
-                    $newLevel = $validated['level'];
-                    $maxOrder = Category::where('parent_id', $newParentId)
-                        ->where('level', $newLevel)
-                        ->max('order');
-                    $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
-                }
-            }
-
-            $category->update($validated);
-
-            $this->reorderSiblings($originalParentId);
-            $this->reorderSiblings($category->parent_id);
-
-            DB::commit();
-
-            return response()->json($this->formatCategory($category->fresh()));
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => 'Error al actualizar la categoría: ' . $e->getMessage()], 500);
-        }
+public function update(Request $request, Category $category)
+{
+    // Convertir parent_id vacío a null
+    if ($request->has('parent_id') && $request->input('parent_id') === '') {
+        $request->merge(['parent_id' => null]);
     }
+
+    $validated = $request->validate([
+        'name' => 'sometimes|string|max:255',
+        'parent_id' => 'nullable|exists:categories,id',
+        'description' => 'nullable|string',
+        'order' => 'nullable|integer|min:1',
+        'is_active' => 'sometimes|boolean',
+        'image' => 'nullable|file|image|max:2048',
+        'remove_image' => 'sometimes|boolean', // nuevo flag
+    ]);
+
+    DB::beginTransaction();
+    try {
+        // Manejar eliminación de imagen si se envía remove_image = true
+        if ($request->boolean('remove_image')) {
+            if ($category->image) {
+                Storage::disk('public')->delete($category->image);
+                $category->image = null;
+                $category->save(); // Guardar el cambio inmediatamente (opcional)
+            }
+        }
+
+        // Manejar nueva imagen (si se sube archivo)
+        if ($request->hasFile('image')) {
+            // Eliminar imagen anterior si existe (por si acaso, ya se eliminó con remove_image, pero por seguridad)
+            if ($category->image && !$request->boolean('remove_image')) {
+                Storage::disk('public')->delete($category->image);
+            }
+            $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
+        } else {
+            // Si no se sube archivo, no modificar el campo image a menos que se haya eliminado
+            unset($validated['image']);
+        }
+
+        $originalParentId = $category->parent_id;
+
+        if (isset($validated['name'])) {
+            $validated['slug'] = Str::slug($validated['name']);
+        }
+
+        if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
+            $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
+            $validated['level'] = $parent ? $parent->level + 1 : 0;
+        }
+
+        if (!isset($validated['order'])) {
+            if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
+                $newParentId = $validated['parent_id'];
+                $newLevel = $validated['level'];
+                $maxOrder = Category::where('parent_id', $newParentId)
+                    ->where('level', $newLevel)
+                    ->max('order');
+                $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
+            }
+        }
+
+        $category->update($validated);
+
+        $this->reorderSiblings($originalParentId);
+        $this->reorderSiblings($category->parent_id);
+
+        DB::commit();
+
+        return response()->json($this->formatCategory($category->fresh()));
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json(['error' => 'Error al actualizar la categoría: ' . $e->getMessage()], 500);
+    }
+}
 
     /**
      * Eliminar categoría
