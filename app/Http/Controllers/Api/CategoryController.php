@@ -105,33 +105,36 @@ class CategoryController extends Controller
 
     public function update(Request $request, Category $category)
     {
+        // Convertir parent_id vacío a null antes de validar
+        if ($request->has('parent_id') && $request->input('parent_id') === '') {
+            $request->merge(['parent_id' => null]);
+        }
+
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'parent_id' => 'nullable|exists:categories,id',
             'description' => 'nullable|string',
             'order' => 'nullable|integer|min:1',
-            'is_active' => 'sometimes|boolean',  // ← agregar
+            'is_active' => 'sometimes|boolean',
             'image' => 'nullable|file|image|max:2048'
         ]);
 
         DB::beginTransaction();
-
         try {
             // Manejar imagen nueva
             if ($request->hasFile('image')) {
                 // Eliminar imagen anterior si existe
                 if ($category->image) {
-                    $oldPath = str_replace('/storage/', 'public/', $category->image);
-                    Storage::delete($oldPath);
+                    $relativePath = str_replace('/storage/', '', $category->image);
+                    $relativePath = ltrim($relativePath, '/');
+                    Storage::disk('public')->delete($relativePath);
                 }
                 $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
             } else {
-                // Si no se envía nueva imagen, mantener la existente (no se incluye en validated)
                 unset($validated['image']);
             }
-            ///
+
             $originalParentId = $category->parent_id;
-            $originalOrder = $category->order; // se usará más adelante si es necesario
 
             // Generar slug si se cambia el nombre
             if (isset($validated['name'])) {
@@ -144,32 +147,23 @@ class CategoryController extends Controller
                 $validated['level'] = $parent ? $parent->level + 1 : 0;
             }
 
-            // Si se ha enviado un 'order' específico, lo respetamos.
-            // Si no se envía, mantenemos el actual (no recalcular automáticamente a menos que cambie el padre)
+            // Asignar order si cambió el padre y no se envió explícitamente
             if (!isset($validated['order'])) {
-                // Si cambió el padre, la categoría se moverá al final del nuevo grupo
                 if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
                     $newParentId = $validated['parent_id'];
-                    $newLevel = $validated['level'];
-                    $maxOrder = Category::where('parent_id', $newParentId)
-                        ->where('level', $newLevel)
-                        ->max('order');
-                    $validated['order'] = is_null($maxOrder) ? 1 : $maxOrder + 1;
+                    $newLevel = $validated['level']; // ya calculado
+                    $maxOrder = Category::where('parent_id', $newParentId)->where('level', $newLevel)->max('order');
+                    $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
                 }
-                // Si no cambió padre y no se envió order, mantenemos el mismo order
             }
 
-            // Realizar la actualización
             $category->update($validated);
 
-            // Reordenar los grupos afectados
-            $this->reorderSiblings($originalParentId); // grupo antiguo (si aplica)
-
-            $newParentId = $category->parent_id; // después del update
-            $this->reorderSiblings($newParentId); // grupo nuevo
+            // Reordenar grupos afectados
+            $this->reorderSiblings($originalParentId);
+            $this->reorderSiblings($category->parent_id);
 
             DB::commit();
-
             return response()->json($category->fresh());
         } catch (\Exception $e) {
             DB::rollBack();
@@ -179,25 +173,23 @@ class CategoryController extends Controller
 
     public function destroy(Category $category)
     {
-        // No permitir eliminar si tiene hijos
         if ($category->children()->count() > 0) {
             return response()->json(['error' => 'No se puede eliminar una categoría con subcategorías'], 422);
         }
+
         if ($category->image) {
-            $oldPath = str_replace('/storage/', 'public/', $category->image);
-            Storage::delete($oldPath);
+            $relativePath = str_replace('/storage/', '', $category->image);
+            $relativePath = ltrim($relativePath, '/');
+            Storage::disk('public')->delete($relativePath);
         }
+
         DB::beginTransaction();
 
         try {
             $parentId = $category->parent_id;
             $category->delete();
-
-            // Reordenar las hermanas restantes
             $this->reorderSiblings($parentId);
-
             DB::commit();
-
             return response()->json(['message' => 'Categoría eliminada y reordenada correctamente']);
         } catch (\Exception $e) {
             DB::rollBack();
