@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\AvatarController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\PruebaController;
+use App\Http\Controllers\Api\BrandController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -79,11 +80,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::put('/profile', [ProfileController::class, 'update']);
     Route::get('/profile', [ProfileController::class, 'show']);
-
+    // Direcciones
     Route::apiResource('addresses', AddressController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::patch('addresses/{address}/default', [AddressController::class, 'setDefault']);
+    // Categorías
     Route::patch('/categories/reorder', [CategoryController::class, 'reorder']);
     Route::apiResource('categories', CategoryController::class);
+    // Marcas
+    Route::apiResource('brands', BrandController::class);
+    Route::post('brands/reorder', [BrandController::class, 'reorder']);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
