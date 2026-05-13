@@ -45,7 +45,7 @@ class BrandController extends Controller
         $brands = Brand::query()
             ->orderBy('order')
             ->orderBy('name')
-            ->paginate($request->get('per_page', 15));
+            ->get();
 
         return response()->json($brands);
     }
