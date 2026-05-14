@@ -13,11 +13,7 @@ use Intervention\Image\ImageManager;
 class BrandController extends Controller
 {
     /**
-     * Subir y convertir imagen a WebP.
-     *
-     * @param \Illuminate\Http\UploadedFile $file
-     * @param string $folder
-     * @return string|null
+     * Subir y convertir imagen a WebP (ruta relativa).
      */
     private function uploadAndConvertToWebp($file, $folder = 'brands')
     {
@@ -25,33 +21,65 @@ class BrandController extends Controller
             return null;
         }
 
-        $manager = ImageManager::gd(); // o ->imagick() si tienes instalado
+        $manager = ImageManager::gd();
         $image = $manager->read($file);
 
         $filename = Str::uuid() . '.webp';
-        $path = $folder . '/' . $filename;
+        $relativePath = $folder . '/' . $filename;
+        $fullPath = storage_path('app/public/' . $relativePath);
 
-        // Guardar en storage/app/public/brands/xxx.webp
-        $image->toWebp()->save(storage_path('app/public/' . $path));
+        // Crear directorio si no existe
+        $directory = dirname($fullPath);
+        if (!file_exists($directory)) {
+            mkdir($directory, 0755, true);
+        }
 
+        $image->toWebp()->save($fullPath);
+
+        return $relativePath; // Ej: 'brands/uuid.webp'
+    }
+
+    /**
+     * Convierte una ruta relativa a URL absoluta.
+     */
+    private function getImageUrl(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
         return Storage::url($path);
     }
 
     /**
-     * Display a listing of the resource.
+     * Agrega el campo image_url a un objeto Brand.
      */
-    public function index(Request $request)
+    private function formatBrand(Brand $brand): Brand
     {
-        $brands = Brand::query()
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get();
-
-        return response()->json($brands);
+        $brand->image_url = $this->getImageUrl($brand->image);
+        return $brand;
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Transforma una colección de marcas añadiendo image_url.
+     */
+    private function transformBrands($brands)
+    {
+        return $brands->map(function ($brand) {
+            return $this->formatBrand($brand);
+        });
+    }
+
+    /**
+     * Listar todas las marcas (ordenadas por order y nombre).
+     */
+    public function index()
+    {
+        $brands = Brand::orderBy('order')->orderBy('name')->get();
+        return response()->json($this->transformBrands($brands));
+    }
+
+    /**
+     * Crear una nueva marca.
      */
     public function store(Request $request)
     {
@@ -64,7 +92,7 @@ class BrandController extends Controller
 
         DB::beginTransaction();
         try {
-            // Calcular el siguiente orden: máximo order actual + 1, o 1 si no hay registros
+            // Asignar order automático (último + 1)
             $maxOrder = Brand::max('order');
             $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
 
@@ -75,7 +103,7 @@ class BrandController extends Controller
             $brand = Brand::create($validated);
             DB::commit();
 
-            return response()->json($brand, 201);
+            return response()->json($this->formatBrand($brand), 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Error al crear marca: ' . $e->getMessage()], 500);
@@ -83,15 +111,15 @@ class BrandController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Mostrar una marca específica.
      */
     public function show(Brand $brand)
     {
-        return response()->json($brand);
+        return response()->json($this->formatBrand($brand));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Actualizar una marca.
      */
     public function update(Request $request, Brand $brand)
     {
@@ -100,27 +128,33 @@ class BrandController extends Controller
             'code' => 'sometimes|string|max:50|unique:brands,code,' . $brand->id,
             'description' => 'nullable|string',
             'image' => 'nullable|file|image|max:2048',
+            'remove_image' => 'sometimes|boolean',
         ]);
 
         DB::beginTransaction();
         try {
-            // Subir nueva imagen y eliminar la anterior
+            // 1. Eliminar imagen si se envía remove_image = true
+            if ($request->boolean('remove_image') && $brand->image) {
+                Storage::disk('public')->delete($brand->image);
+                $brand->image = null;
+                $brand->save(); // guardar cambio inmediato
+            }
+
+            // 2. Subir nueva imagen (reemplaza la actual)
             if ($request->hasFile('image')) {
-                // Eliminar imagen antigua si existe
+                // Eliminar la anterior si existe (evita duplicados)
                 if ($brand->image) {
-                    $oldPath = str_replace('/storage/', 'public/', $brand->image);
-                    Storage::delete($oldPath);
+                    Storage::disk('public')->delete($brand->image);
                 }
                 $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
             } else {
-                // No actualizar el campo image si no se envía
                 unset($validated['image']);
             }
 
             $brand->update($validated);
             DB::commit();
 
-            return response()->json($brand);
+            return response()->json($this->formatBrand($brand));
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Error al actualizar marca: ' . $e->getMessage()], 500);
@@ -128,24 +162,24 @@ class BrandController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Eliminar una marca.
      */
     public function destroy(Brand $brand)
     {
-        // Verificar si hay productos asociados (opcional)
+        // Verificar si tiene productos asociados (opcional)
         if ($brand->products()->exists()) {
             return response()->json([
-                'error' => 'No se puede eliminar la marca porque tiene productos asociados.'
+                'error' => 'No se puede eliminar la marca porque tiene productos asociados.',
             ], 422);
         }
 
         DB::beginTransaction();
         try {
-            // Eliminar imagen física
+            // Eliminar la imagen física si existe
             if ($brand->image) {
-                $oldPath = str_replace('/storage/', 'public/', $brand->image);
-                Storage::delete($oldPath);
+                Storage::disk('public')->delete($brand->image);
             }
+
             $brand->delete();
             DB::commit();
 
@@ -157,7 +191,7 @@ class BrandController extends Controller
     }
 
     /**
-     * Opcional: Reordenar marcas (envías un array de ids en el orden deseado).
+     * Reordenar marcas (drag & drop).
      */
     public function reorder(Request $request)
     {
