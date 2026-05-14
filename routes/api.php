@@ -88,7 +88,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('categories', CategoryController::class);
     // Marcas
     Route::apiResource('brands', BrandController::class);
-    Route::post('brands/reorder', [BrandController::class, 'reorder']);
+    Route::patch('brands/reorder', [BrandController::class, 'reorder']);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
