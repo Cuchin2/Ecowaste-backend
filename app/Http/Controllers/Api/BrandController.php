@@ -12,20 +12,18 @@ use Intervention\Image\ImageManager;
 
 class BrandController extends Controller
 {
-    private function uploadWebp($file, string $folder = 'brands'): ?string
+    private function uploadWebp($file, $folder = 'brands')
     {
         if (!$file) return null;
 
         $img = ImageManager::gd()->read($file);
-        $img->scaleDown(width: 1200); // reduce tamaño para mayor velocidad
-
         $relative = $folder . '/' . Str::uuid() . '.webp';
-        $full = storage_path('app/public/' . $relative);
-        $dir = dirname($full);
-
+        $fullPath = storage_path('app/public/' . $relative);
+        $dir = dirname($fullPath);
         if (!is_dir($dir)) mkdir($dir, 0755, true);
 
-        $img->toWebp(75)->save($full);
+        // Sin escalado, sin calidad forzada (usa la predeterminada ~90)
+        $img->toWebp()->save($fullPath);
         return $relative;
     }
 
