@@ -59,13 +59,15 @@ class BrandController extends Controller
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:brands,code',
             'description' => 'nullable|string',
-            'order' => 'nullable|integer|min:0',
-            'image' => 'nullable|file|image|max:2048', // 2MB
+            'image' => 'nullable|file|image|max:2048',
         ]);
 
         DB::beginTransaction();
         try {
-            // Subir imagen si se envió
+            // Calcular el siguiente orden: máximo order actual + 1, o 1 si no hay registros
+            $maxOrder = Brand::max('order');
+            $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
+
             if ($request->hasFile('image')) {
                 $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
             }
@@ -97,7 +99,6 @@ class BrandController extends Controller
             'name' => 'sometimes|string|max:255',
             'code' => 'sometimes|string|max:50|unique:brands,code,' . $brand->id,
             'description' => 'nullable|string',
-            'order' => 'nullable|integer|min:0',
             'image' => 'nullable|file|image|max:2048',
         ]);
 
