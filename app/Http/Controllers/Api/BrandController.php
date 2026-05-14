@@ -109,9 +109,9 @@ class BrandController extends Controller
 
     public function destroy(Brand $brand)
     {
-        if ($brand->products()->exists()) {
+/*         if ($brand->products()->exists()) {
             return response()->json(['error' => 'Marca con productos asociados'], 422);
-        }
+        } */
 
         DB::beginTransaction();
         try {
