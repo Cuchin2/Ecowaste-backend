@@ -48,7 +48,7 @@ class BrandController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:brands,code',
+            'code' => 'required|string|digits:2|unique:brands,code' . ($brand->id ?? ''),
             'description' => 'nullable|string',
             'image' => 'nullable|file|image|max:2048',
         ]);
@@ -77,7 +77,7 @@ class BrandController extends Controller
     {
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'code' => 'sometimes|string|max:50|unique:brands,code,' . $brand->id,
+            'code' => 'required|string|digits:2|unique:brands,code' . ($brand->id ?? ''),
             'description' => 'nullable|string',
             'image' => 'nullable|file|image|max:2048',
             'remove_image' => 'sometimes|boolean',
