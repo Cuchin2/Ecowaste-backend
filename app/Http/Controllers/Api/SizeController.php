@@ -14,7 +14,7 @@ class SizeController extends Controller
      */
     public function index()
     {
-        $sizes = Size::orderBy('name')->get();
+        $sizes = Size::get();
         return response()->json($sizes);
     }
 

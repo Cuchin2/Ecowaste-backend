@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\PruebaController;
 use App\Http\Controllers\Api\BrandController;
 use App\Http\Controllers\Api\SizeController;
+use App\Http\Controllers\Api\ColorFlavorController;
 
 /**
  * RUTA PROTEGIDA POR SANCTUM
@@ -94,7 +95,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Tallas
     Route::get('sizes/tipos-unidad', [SizeController::class, 'tiposUnidad']);  
     Route::apiResource('sizes', SizeController::class);
- 
+    // Color / Sabor
+    Route::apiResource('color-flavor', ColorFlavorController::class);
+
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
