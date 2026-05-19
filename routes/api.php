@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\PruebaController;
 use App\Http\Controllers\Api\BrandController;
+use App\Http\Controllers\Api\SizeController;
+
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -89,6 +91,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Marcas
     Route::patch('brands/reorder', [BrandController::class, 'reorder']);
     Route::apiResource('brands', BrandController::class);
+    // Tallas
+    Route::apiResource('sizes', SizeController::class);
 
 });
 

@@ -121,6 +121,7 @@ class BrandController extends Controller
 
     public function destroy(Brand $brand)
     {
+        /* Consultar manejo de eliminación de Marcas de los productos (ocultar o borrado suave)*/
 /*         if ($brand->products()->exists()) {
             return response()->json(['error' => 'Marca con productos asociados'], 422);
         } */
