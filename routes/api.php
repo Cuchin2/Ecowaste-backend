@@ -93,7 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('brands', BrandController::class);
     // Tallas
     Route::apiResource('sizes', SizeController::class);
-
+    Route::get('sizes/tipos-unidad', [SizeController::class, 'tiposUnidad']);   
 });
 
 Route::post('/register', [RegisterController::class, 'register']);

@@ -105,4 +105,20 @@ class SizeController extends Controller
             ], 500);
         }
     }
+        /**
+     * Obtener los tipos de unidad únicos para usar en un select.
+     */
+    public function tiposUnidad()
+    {
+        $tipos = Size::select('tipo_unidad')
+            ->distinct()
+            ->whereNotNull('tipo_unidad')
+            ->orderBy('tipo_unidad')
+            ->pluck('tipo_unidad');
+
+        // Opcional: transformar a formato {value, label} si lo prefieres
+        // $options = $tipos->map(fn($t) => ['value' => $t, 'label' => $t]);
+
+        return response()->json($tipos);
+    }
 }
