@@ -3,35 +3,34 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\ColorFlavor;          // ← importación del modelo
+use App\Models\ColorFlavor;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;   // ← importación de DB
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ColorFlavorController extends Controller
 {
-    /**
-     * Listar todos los colores/sabores.
-     */
     public function index()
     {
         $items = ColorFlavor::orderBy('type')->orderBy('name')->get();
         return response()->json($items);
     }
 
-    /**
-     * Crear un nuevo color/sabor.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100',
-            'hex'  => 'required|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', // ← requerido
+            'hex'  => [
+                'required',
+                'string',
+                'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'
+            ],
             'code' => [
                 'required',
                 'string',
                 'size:2',
                 'regex:/^[A-Z0-9]{2}$/',
-                'unique:color_flavor,code'
+                Rule::unique('color_flavor', 'code')
             ],
             'type' => 'required|in:color,sabor',
         ]);
@@ -43,34 +42,30 @@ class ColorFlavorController extends Controller
             return response()->json($item, 201);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Error al crear: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['error' => 'Error al crear: ' . $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Mostrar un color/sabor específico.
-     */
     public function show(ColorFlavor $colorFlavor)
     {
         return response()->json($colorFlavor);
     }
 
-    /**
-     * Actualizar un color/sabor existente.
-     */
     public function update(Request $request, ColorFlavor $colorFlavor)
     {
         $validated = $request->validate([
             'name' => 'sometimes|string|max:100',
-            'hex'  => 'sometimes|required|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
+            'hex'  => [
+                'sometimes',
+                'string',
+                'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'
+            ],
             'code' => [
                 'sometimes',
                 'string',
                 'size:2',
                 'regex:/^[A-Z0-9]{2}$/',
-                'unique:color_flavor,code,' . $colorFlavor->id
+                Rule::unique('color_flavor', 'code')->ignore($colorFlavor->id)
             ],
             'type' => 'sometimes|in:color,sabor',
         ]);
@@ -82,15 +77,10 @@ class ColorFlavorController extends Controller
             return response()->json($colorFlavor->fresh());
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Error al actualizar: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
         }
     }
 
-    /**
-     * Eliminar un color/sabor.
-     */
     public function destroy(ColorFlavor $colorFlavor)
     {
         DB::beginTransaction();
@@ -100,9 +90,7 @@ class ColorFlavorController extends Controller
             return response()->json(['message' => 'Eliminado correctamente']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'Error al eliminar: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
         }
     }
 }
