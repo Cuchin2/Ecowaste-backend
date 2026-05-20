@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ColorFlavor;          // ← importación del modelo
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\DB;   // ← importación de DB
+
 class ColorFlavorController extends Controller
 {
-      /**
+    /**
      * Listar todos los colores/sabores.
      */
     public function index()
@@ -23,7 +25,7 @@ class ColorFlavorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:100',
-            'hex'  => 'nullable|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
+            'hex'  => 'required|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', // ← requerido
             'code' => [
                 'required',
                 'string',
@@ -62,7 +64,7 @@ class ColorFlavorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'sometimes|string|max:100',
-            'hex'  => 'nullable|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
+            'hex'  => 'sometimes|required|string|regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/',
             'code' => [
                 'sometimes',
                 'string',
@@ -91,9 +93,6 @@ class ColorFlavorController extends Controller
      */
     public function destroy(ColorFlavor $colorFlavor)
     {
-        // Opcional: verificar si tiene productos asociados (si existe la relación)
-        // if ($colorFlavor->products()->exists()) { ... }
-
         DB::beginTransaction();
         try {
             $colorFlavor->delete();
