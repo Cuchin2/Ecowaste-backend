@@ -100,6 +100,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('color-flavor', ColorFlavorController::class);
     // Empaques
     Route::apiResource('empaques', EmpaqueController::class);
+    // Especial
+    Route::post('specials/reorder', [SpecialController::class, 'reorder']);
+    Route::apiResource('specials', SpecialController::class);
+
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
