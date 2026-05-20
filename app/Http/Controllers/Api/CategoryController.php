@@ -83,7 +83,7 @@ class CategoryController extends Controller
             'description' => 'nullable|string',
             'order' => 'nullable|integer|min:1',
             'is_active' => 'sometimes|boolean',
-            'image' => 'nullable|file|image|max:2048'
+            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048'
         ]);
 
         // Procesar imagen si se subió
@@ -136,7 +136,7 @@ public function update(Request $request, Category $category)
         'description' => 'nullable|string',
         'order' => 'nullable|integer|min:1',
         'is_active' => 'sometimes|boolean',
-        'image' => 'nullable|file|image|max:2048',
+        'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
         'remove_image' => 'sometimes|boolean', // nuevo flag
     ]);
 

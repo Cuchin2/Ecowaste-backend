@@ -56,7 +56,7 @@ class BrandController extends Controller
                     'unique:brands,code,' . ($brand->id ?? '')
                 ],
             'description' => 'nullable|string',
-            'image' => 'nullable|file|image|max:2048',
+            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
         ]);
 
         DB::beginTransaction();
@@ -91,7 +91,7 @@ class BrandController extends Controller
                     'unique:brands,code,' . ($brand->id ?? '')
                 ],
             'description' => 'nullable|string',
-            'image' => 'nullable|file|image|max:2048',
+            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'remove_image' => 'sometimes|boolean',
         ]);
 

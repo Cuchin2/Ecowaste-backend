@@ -48,7 +48,7 @@ class SpecialController extends Controller
         $data = $request->validate([
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
-            'image'       => 'nullable|file|image|max:2048',
+            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048'
         ]);
 
         try {
@@ -73,7 +73,7 @@ class SpecialController extends Controller
         $data = $request->validate([
             'name'        => 'sometimes|string|max:255',
             'description' => 'nullable|string',
-            'image'       => 'nullable|file|image|max:2048',
+            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'remove_image' => 'sometimes|boolean',
         ]);
 
