@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
+use App\Traits\UploadsImages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -12,20 +13,7 @@ use Intervention\Image\ImageManager;
 
 class BrandController extends Controller
 {
-    private function uploadWebp($file, $folder = 'brands')
-    {
-        if (!$file) return null;
-
-        $img = ImageManager::gd()->read($file);
-        $relative = $folder . '/' . Str::uuid() . '.webp';
-        $fullPath = storage_path('app/public/' . $relative);
-        $dir = dirname($fullPath);
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-
-        // Sin escalado, sin calidad forzada (usa la predeterminada ~90)
-        $img->toWebp()->save($fullPath);
-        return $relative;
-    }
+    use UploadsImages; // Usamos el trait para subir y eliminar imágenes
 
     private function imageUrl(?string $path): ?string
     {
@@ -49,12 +37,12 @@ class BrandController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'code' => [
-                    'required',
-                    'string',
-                    'size:2',
-                    'regex:/^[A-Z0-9]{2}$/',
-                    'unique:brands,code,' . ($brand->id ?? '')
-                ],
+                'required',
+                'string',
+                'size:2',
+                'regex:/^[A-Z0-9]{2}$/',
+                'unique:brands,code' // creación
+            ],
             'description' => 'nullable|string',
             'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
         ]);
@@ -63,7 +51,7 @@ class BrandController extends Controller
         try {
             $data['order'] = Brand::max('order') + 1;
             if ($request->hasFile('image')) {
-                $data['image'] = $this->uploadWebp($request->file('image'));
+                $data['image'] = $this->uploadImage($request->file('image'), 'brands');
             }
             $brand = Brand::create($data);
             DB::commit();
@@ -84,12 +72,12 @@ class BrandController extends Controller
         $data = $request->validate([
             'name' => 'sometimes|string|max:255',
             'code' => [
-                    'required',
-                    'string',
-                    'size:2',
-                    'regex:/^[A-Z0-9]{2}$/',
-                    'unique:brands,code,' . ($brand->id ?? '')
-                ],
+                'required',
+                'string',
+                'size:2',
+                'regex:/^[A-Z0-9]{2}$/',
+                'unique:brands,code,' . $brand->id
+            ],
             'description' => 'nullable|string',
             'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'remove_image' => 'sometimes|boolean',
@@ -98,14 +86,14 @@ class BrandController extends Controller
         DB::beginTransaction();
         try {
             if ($request->boolean('remove_image') && $brand->image) {
-                Storage::disk('public')->delete($brand->image);
+                $this->deleteImage($brand->image);
                 $brand->image = null;
                 $brand->save();
             }
 
             if ($request->hasFile('image')) {
-                if ($brand->image) Storage::disk('public')->delete($brand->image);
-                $data['image'] = $this->uploadWebp($request->file('image'));
+                if ($brand->image) $this->deleteImage($brand->image);
+                $data['image'] = $this->uploadImage($request->file('image'), 'brands');
             } else {
                 unset($data['image']);
             }
@@ -121,14 +109,9 @@ class BrandController extends Controller
 
     public function destroy(Brand $brand)
     {
-        /* Consultar manejo de eliminación de Marcas de los productos (ocultar o borrado suave)*/
-/*         if ($brand->products()->exists()) {
-            return response()->json(['error' => 'Marca con productos asociados'], 422);
-        } */
-
         DB::beginTransaction();
         try {
-            if ($brand->image) Storage::disk('public')->delete($brand->image);
+            if ($brand->image) $this->deleteImage($brand->image);
             $brand->delete();
             DB::commit();
             return response()->json(['message' => 'Marca eliminada']);

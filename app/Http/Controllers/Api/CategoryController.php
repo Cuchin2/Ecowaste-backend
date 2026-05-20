@@ -4,14 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Traits\UploadsImages; // Importamos el trait
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Intervention\Image\ImageManager;
 use Illuminate\Support\Facades\Storage;
 
 class CategoryController extends Controller
 {
+    use UploadsImages; // Usamos el trait para subir/eliminar imágenes
+
     /**
      * Categorías públicas (para visitantes, solo activas)
      */
@@ -86,9 +88,9 @@ class CategoryController extends Controller
             'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048'
         ]);
 
-        // Procesar imagen si se subió
+        // Procesar imagen si se subió (usamos el trait)
         if ($request->hasFile('image')) {
-            $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
+            $validated['image'] = $this->uploadImage($request->file('image'), 'categories');
         } else {
             $validated['image'] = null;
         }
@@ -123,81 +125,78 @@ class CategoryController extends Controller
     /**
      * Actualizar categoría
      */
-public function update(Request $request, Category $category)
-{
-    // Convertir parent_id vacío a null
-    if ($request->has('parent_id') && $request->input('parent_id') === '') {
-        $request->merge(['parent_id' => null]);
-    }
+    public function update(Request $request, Category $category)
+    {
+        // Convertir parent_id vacío a null
+        if ($request->has('parent_id') && $request->input('parent_id') === '') {
+            $request->merge(['parent_id' => null]);
+        }
 
-    $validated = $request->validate([
-        'name' => 'sometimes|string|max:255',
-        'parent_id' => 'nullable|exists:categories,id',
-        'description' => 'nullable|string',
-        'order' => 'nullable|integer|min:1',
-        'is_active' => 'sometimes|boolean',
-        'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
-        'remove_image' => 'sometimes|boolean', // nuevo flag
-    ]);
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'parent_id' => 'nullable|exists:categories,id',
+            'description' => 'nullable|string',
+            'order' => 'nullable|integer|min:1',
+            'is_active' => 'sometimes|boolean',
+            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
+            'remove_image' => 'sometimes|boolean',
+        ]);
 
-    DB::beginTransaction();
-    try {
-        // Manejar eliminación de imagen si se envía remove_image = true
-        if ($request->boolean('remove_image')) {
-            if ($category->image) {
-                Storage::disk('public')->delete($category->image);
+        DB::beginTransaction();
+        try {
+            // Manejar eliminación de imagen si se envía remove_image = true
+            if ($request->boolean('remove_image') && $category->image) {
+                $this->deleteImage($category->image);
                 $category->image = null;
-                $category->save(); // Guardar el cambio inmediatamente (opcional)
+                $category->save();
             }
-        }
 
-        // Manejar nueva imagen (si se sube archivo)
-        if ($request->hasFile('image')) {
-            // Eliminar imagen anterior si existe (por si acaso, ya se eliminó con remove_image, pero por seguridad)
-            if ($category->image && !$request->boolean('remove_image')) {
-                Storage::disk('public')->delete($category->image);
+            // Manejar nueva imagen (si se sube archivo)
+            if ($request->hasFile('image')) {
+                // Eliminar imagen anterior si existe (por seguridad, aunque ya se eliminó con remove_image)
+                if ($category->image && !$request->boolean('remove_image')) {
+                    $this->deleteImage($category->image);
+                }
+                $validated['image'] = $this->uploadImage($request->file('image'), 'categories');
+            } else {
+                unset($validated['image']);
             }
-            $validated['image'] = $this->uploadAndConvertToWebp($request->file('image'));
-        } else {
-            // Si no se sube archivo, no modificar el campo image a menos que se haya eliminado
-            unset($validated['image']);
-        }
 
-        $originalParentId = $category->parent_id;
+            $originalParentId = $category->parent_id;
 
-        if (isset($validated['name'])) {
-            $validated['slug'] = Str::slug($validated['name']);
-        }
+            if (isset($validated['name'])) {
+                $validated['slug'] = Str::slug($validated['name']);
+            }
 
-        if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
-            $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
-            $validated['level'] = $parent ? $parent->level + 1 : 0;
-        }
-
-        if (!isset($validated['order'])) {
             if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
-                $newParentId = $validated['parent_id'];
-                $newLevel = $validated['level'];
-                $maxOrder = Category::where('parent_id', $newParentId)
-                    ->where('level', $newLevel)
-                    ->max('order');
-                $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
+                $parent = $validated['parent_id'] ? Category::find($validated['parent_id']) : null;
+                $validated['level'] = $parent ? $parent->level + 1 : 0;
             }
+
+            if (!isset($validated['order'])) {
+                if (isset($validated['parent_id']) && $validated['parent_id'] != $originalParentId) {
+                    $newParentId = $validated['parent_id'];
+                    $newLevel = $validated['level'];
+                    $maxOrder = Category::where('parent_id', $newParentId)
+                        ->where('level', $newLevel)
+                        ->max('order');
+                    $validated['order'] = $maxOrder ? $maxOrder + 1 : 1;
+                }
+            }
+
+            $category->update($validated);
+
+            $this->reorderSiblings($originalParentId);
+            $this->reorderSiblings($category->parent_id);
+
+            DB::commit();
+
+            return response()->json($this->formatCategory($category->fresh()));
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Error al actualizar la categoría: ' . $e->getMessage()], 500);
         }
-
-        $category->update($validated);
-
-        $this->reorderSiblings($originalParentId);
-        $this->reorderSiblings($category->parent_id);
-
-        DB::commit();
-
-        return response()->json($this->formatCategory($category->fresh()));
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json(['error' => 'Error al actualizar la categoría: ' . $e->getMessage()], 500);
     }
-}
 
     /**
      * Eliminar categoría
@@ -208,12 +207,11 @@ public function update(Request $request, Category $category)
             return response()->json(['error' => 'No se puede eliminar una categoría con subcategorías'], 422);
         }
 
-        if ($category->image) {
-            Storage::disk('public')->delete($category->image);
-        }
-
         DB::beginTransaction();
         try {
+            if ($category->image) {
+                $this->deleteImage($category->image);
+            }
             $parentId = $category->parent_id;
             $category->delete();
             $this->reorderSiblings($parentId);
@@ -266,34 +264,13 @@ public function update(Request $request, Category $category)
     }
 
     /**
-     * Subir y convertir imagen a WebP
-     */
-    private function uploadAndConvertToWebp($file, $folder = 'categories')
-    {
-        if (!$file) return null;
-
-        $manager = ImageManager::gd();
-        $image = $manager->read($file);
-
-        $filename = Str::uuid() . '.webp';
-        $path = $folder . '/' . $filename;
-
-        $image->toWebp()->save(storage_path('app/public/' . $path));
-
-        // Retornar la ruta relativa (ej. categories/uuid.webp)
-        return $path;
-    }
-
-    /**
      * Convierte una ruta de imagen a URL absoluta usando Storage::url()
      */
-private function getImageUrl($path)
-{
-    if (!$path) return null;
-    // Forzar URL absoluta usando la configuración de APP_URL
-    $baseUrl = rtrim(config('app.url'), '/');
-    return $baseUrl . '/storage/' . ltrim($path, '/');
-}
+    private function getImageUrl(?string $path): ?string
+    {
+        if (!$path) return null;
+        return Storage::url($path);
+    }
 
     /**
      * Formatea una categoría individual añadiendo image_url
