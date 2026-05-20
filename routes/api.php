@@ -101,7 +101,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Empaques
     Route::apiResource('empaques', EmpaqueController::class);
     // Especial
-    Route::post('specials/reorder', [SpecialController::class, 'reorder']);
+    Route::patch('specials/reorder', [SpecialController::class, 'reorder']);
     Route::apiResource('specials', SpecialController::class);
 
 });
