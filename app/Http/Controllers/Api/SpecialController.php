@@ -4,27 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Special;
+use App\Traits\UploadsImages;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use Intervention\Image\ImageManager;
 
 class SpecialController extends Controller
 {
-    private function uploadWebp($file, $folder = 'specials')
-    {
-        if (!$file) return null;
-
-        $img = ImageManager::gd()->read($file);
-        $relative = $folder . '/' . Str::uuid() . '.webp';
-        $fullPath = storage_path('app/public/' . $relative);
-        $dir = dirname($fullPath);
-        if (!is_dir($dir)) mkdir($dir, 0755, true);
-
-        $img->toWebp()->save($fullPath);
-        return $relative;
-    }
+    use UploadsImages; // ⬅️ usamos el trait
 
     private function imageUrl(?string $path): ?string
     {
@@ -48,13 +34,13 @@ class SpecialController extends Controller
         $data = $request->validate([
             'name'        => 'required|string|max:255',
             'description' => 'nullable|string',
-            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048'
+            'image'       => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
         ]);
 
         try {
             $data['order'] = Special::max('order') + 1;
             if ($request->hasFile('image')) {
-                $data['image'] = $this->uploadWebp($request->file('image'));
+                $data['image'] = $this->uploadImage($request->file('image'), 'specials');
             }
             $special = Special::create($data);
             return response()->json($this->format($special), 201);
@@ -71,22 +57,22 @@ class SpecialController extends Controller
     public function update(Request $request, Special $special)
     {
         $data = $request->validate([
-            'name'        => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'image' => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
+            'name'         => 'sometimes|string|max:255',
+            'description'  => 'nullable|string',
+            'image'        => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'remove_image' => 'sometimes|boolean',
         ]);
 
         try {
             if ($request->boolean('remove_image') && $special->image) {
-                Storage::disk('public')->delete($special->image);
+                $this->deleteImage($special->image);
                 $special->image = null;
                 $special->save();
             }
 
             if ($request->hasFile('image')) {
-                if ($special->image) Storage::disk('public')->delete($special->image);
-                $data['image'] = $this->uploadWebp($request->file('image'));
+                if ($special->image) $this->deleteImage($special->image);
+                $data['image'] = $this->uploadImage($request->file('image'), 'specials');
             } else {
                 unset($data['image']);
             }
@@ -101,7 +87,7 @@ class SpecialController extends Controller
     public function destroy(Special $special)
     {
         try {
-            if ($special->image) Storage::disk('public')->delete($special->image);
+            if ($special->image) $this->deleteImage($special->image);
             $special->delete();
             return response()->json(['message' => 'Elemento especial eliminado']);
         } catch (\Exception $e) {
