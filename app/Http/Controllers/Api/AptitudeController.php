@@ -44,8 +44,8 @@ class AptitudeController extends Controller
         $data = $request->validate([
             'name'           => 'required|string|max:255',
             'description'    => 'nullable|string',
-            'image_banner'   => 'nullable|file|image|max:2048',
-            'image_tag'      => 'nullable|file|image|max:2048',
+            'image_banner'   => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
+            'image_tag'      => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'type'           => 'required|string|max:100',
         ]);
 
@@ -74,8 +74,8 @@ class AptitudeController extends Controller
         $data = $request->validate([
             'name'                => 'sometimes|string|max:255',
             'description'         => 'nullable|string',
-            'image_banner'        => 'nullable|file|image|max:2048',
-            'image_tag'           => 'nullable|file|image|max:2048',
+            'image_banner'        => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
+            'image_tag'           => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'remove_image_banner' => 'sometimes|boolean',
             'remove_image_tag'    => 'sometimes|boolean',
             'type'                => 'sometimes|string|max:100',
