@@ -10,34 +10,13 @@ use Illuminate\Support\Facades\Storage;
 
 class DietController extends Controller
 {
-    use UploadsImages;
+    use UploadsImages; // ⬅️ usamos el trait
 
-    /**
-     * Elimina una imagen del disco público.
-     */
-    private function deleteImage($path)
-    {
-        if ($path) {
-            Storage::disk('public')->delete($path);
-        }
-    }
-
-    /**
-     * Genera la URL pública de una imagen, normalizando la ruta.
-     */
     private function imageUrl(?string $path): ?string
     {
-        if (!$path) {
-            return null;
-        }
-        // Si la ruta ya contiene 'storage/' al inicio, la limpiamos
-        $cleanPath = preg_replace('#^storage/?#', '', $path);
-        return Storage::url($cleanPath);
+        return $path ? Storage::url($path) : null;
     }
 
-    /**
-     * Agrega el campo image_url a la respuesta.
-     */
     private function format(Diet $diet): Diet
     {
         $diet->image_url = $this->imageUrl($diet->image);
@@ -92,9 +71,7 @@ class DietController extends Controller
             }
 
             if ($request->hasFile('image')) {
-                if ($diet->image) {
-                    $this->deleteImage($diet->image);
-                }
+                if ($diet->image) $this->deleteImage($diet->image);
                 $data['image'] = $this->uploadImage($request->file('image'), 'diets');
             } else {
                 unset($data['image']);
@@ -110,9 +87,7 @@ class DietController extends Controller
     public function destroy(Diet $diet)
     {
         try {
-            if ($diet->image) {
-                $this->deleteImage($diet->image);
-            }
+            if ($diet->image) $this->deleteImage($diet->image);
             $diet->delete();
             return response()->json(['message' => 'Dieta eliminada correctamente']);
         } catch (\Exception $e) {
