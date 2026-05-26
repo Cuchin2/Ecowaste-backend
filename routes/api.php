@@ -108,7 +108,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Ingredientes
     Route::apiResource('ingredients', IngredientController::class);
     // Aptitudes
-    Route::post('aptitudes/reorder', [AptitudeController::class, 'reorder']);
+    Route::patch('aptitudes/reorder', [AptitudeController::class, 'reorder']);
     Route::apiResource('aptitudes', AptitudeController::class);
 });
 
