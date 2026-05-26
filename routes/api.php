@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\SizeController;
 use App\Http\Controllers\Api\ColorFlavorController;
 use App\Http\Controllers\Api\EmpaqueController;
 use App\Http\Controllers\Api\SpecialController;
+use App\Http\Controllers\Api\IngredientController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
