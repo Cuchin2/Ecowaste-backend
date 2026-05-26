@@ -38,7 +38,7 @@ class IngredientController extends Controller
     public function update(Request $request, Ingredient $ingredient)
     {
         $validated = $request->validate([
-            'name'        => 'sometimes|string|max:255',
+            'name'        => 'sometimes|string|max:255|unique',
             'description' => 'nullable|string',
             'slug'        => 'nullable|string|max:255|unique:ingredients,slug,' . $ingredient->id,
         ]);
