@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\SpecialController;
 use App\Http\Controllers\Api\IngredientController;
 use App\Http\Controllers\Api\AptitudeController;
 use App\Http\Controllers\Api\DietController;
+use App\Http\Controllers\Api\TraceController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -114,7 +115,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dieta
     Route::patch('diets/reorder', [DietController::class, 'reorder']);
     Route::apiResource('diets', DietController::class);
-
+    // Trazas
+    Route::get('traces/tipos', [TraceController::class, 'tipos']);
+    Route::apiResource('traces', TraceController::class);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
