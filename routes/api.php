@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\ColorFlavorController;
 use App\Http\Controllers\Api\EmpaqueController;
 use App\Http\Controllers\Api\SpecialController;
 use App\Http\Controllers\Api\IngredientController;
+use App\Http\Controllers\Api\AptitudeController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -106,6 +107,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('specials', SpecialController::class);
     // Ingredientes
     Route::apiResource('ingredients', IngredientController::class);
+    // Aptitudes
+    Route::post('aptitudes/reorder', [AptitudeController::class, 'reorder']);
+    Route::apiResource('aptitudes', AptitudeController::class);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
