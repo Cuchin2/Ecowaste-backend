@@ -12,21 +12,10 @@ class DietController extends Controller
 {
     use UploadsImages; // Reutilizamos el trait para upload y delete
 
-    private function imageUrl(?string $path): ?string
-    {
-        return $path ? Storage::url($path) : null;
-    }
-
-    private function format(Diet $diet): Diet
-    {
-        $diet->image_url = $this->imageUrl($diet->image);
-        return $diet;
-    }
-
     public function index()
     {
         $diets = Diet::orderBy('order')->orderBy('name')->get();
-        return response()->json($diets->map(fn($d) => $this->format($d)));
+        return response()->json($diets);
     }
 
     public function store(Request $request)
