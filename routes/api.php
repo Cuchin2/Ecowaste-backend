@@ -103,7 +103,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Especial
     Route::patch('specials/reorder', [SpecialController::class, 'reorder']);
     Route::apiResource('specials', SpecialController::class);
-
+    // Ingredientes
+    Route::apiResource('ingredients', IngredientController::class);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
