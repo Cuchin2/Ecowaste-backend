@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\EmpaqueController;
 use App\Http\Controllers\Api\SpecialController;
 use App\Http\Controllers\Api\IngredientController;
 use App\Http\Controllers\Api\AptitudeController;
+use App\Http\Controllers\Api\DietController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -110,6 +111,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Aptitudes
     Route::patch('aptitudes/reorder', [AptitudeController::class, 'reorder']);
     Route::apiResource('aptitudes', AptitudeController::class);
+    // Dieta
+    Route::patch('diets/reorder', [DietController::class, 'reorder']);
+    Route::apiResource('diets', DietController::class);
+
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
