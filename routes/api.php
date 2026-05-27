@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\AptitudeController;
 use App\Http\Controllers\Api\DietController;
 use App\Http\Controllers\Api\TraceController;
 use App\Http\Controllers\Api\TagController;
+use App\Http\Controllers\Api\OctogonController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -121,6 +122,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('traces', TraceController::class);
     // Tags
     Route::apiResource('tags', TagController::class);
+    // Octogonos o Sellos
+    Route::patch('octogons/reorder', [OctogonController::class, 'reorder']);
+    Route::apiResource('octogons', OctogonController::class);
+
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
