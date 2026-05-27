@@ -134,17 +134,29 @@ class ProductController extends Controller
     public function reorder(Request $request)
     {
         $request->validate([
-            'products' => 'required|array',
-            'products.*.id' => 'exists:products,id',
+            'source_id' => 'required|exists:products,id',
+            'target_id' => 'required|exists:products,id',
         ]);
 
         try {
-            foreach ($request->products as $i => $item) {
-                Product::where('id', $item['id'])->update(['order' => $i + 1]);
+            $source = Product::find($request->source_id);
+            $target = Product::find($request->target_id);
+
+            if (!$source || !$target) {
+                return response()->json(['error' => 'Productos no encontrados'], 404);
             }
-            return response()->json(['message' => 'Orden actualizado']);
+
+            // Intercambiar los valores de 'order'
+            $tempOrder = $source->order;
+            $source->order = $target->order;
+            $target->order = $tempOrder;
+
+            $source->save();
+            $target->save();
+
+            return response()->json(['message' => 'Orden intercambiado correctamente']);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al reordenar: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Error al intercambiar orden: ' . $e->getMessage()], 500);
         }
     }
 }
