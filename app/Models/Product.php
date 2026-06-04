@@ -39,7 +39,10 @@ class Product extends Model
     {
         return $this->belongsTo(Brand::class);
     }
-
+    public function tags()
+    {
+        return $this->morphToMany(Tag::class, 'taggable');
+    }
     // Auto-generar slug y code
     protected static function boot()
     {

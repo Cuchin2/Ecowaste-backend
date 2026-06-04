@@ -83,6 +83,8 @@ class ProductController extends Controller
             'img_nutrition'       => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'remove_image'        => 'sometimes|boolean',
             'remove_img_nutrition' => 'sometimes|boolean',
+            'tag_ids'             => 'sometimes|array',
+            'tag_ids.*'           => 'exists:tags,id',
         ]);
 
         try {
@@ -113,6 +115,12 @@ class ProductController extends Controller
             }
 
             $product->update($data);
+
+            // Sincronizar etiquetas solo si se envió el campo
+            if ($request->has('tag_ids')) {
+                $product->tags()->sync($request->input('tag_ids'));
+            }
+
             return response()->json($this->format($product->fresh()));
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
