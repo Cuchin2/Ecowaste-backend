@@ -66,7 +66,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load(['category', 'brand']);
+        $product->load(['category', 'brand', 'tags']);
         return response()->json($this->format($product));
     }
 
