@@ -66,7 +66,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load(['category', 'brand', 'tags','empaques']);
+        $product->load(['category','brand','tags','empaques','octogons']);
         return response()->json($this->format($product));
     }
 
@@ -87,6 +87,8 @@ class ProductController extends Controller
             'tag_ids.*'           => 'exists:tags,id',
             'empaque_ids'         => 'sometimes|array',          // 👈 nuevo
             'empaque_ids.*'       => 'exists:empaques,id',      // 👈 nuevo
+            'octogon_ids'        => 'sometimes|array',
+            'octogon_ids.*'      => 'exists:octogons,id',
         ]);
 
         try {
@@ -127,7 +129,10 @@ class ProductController extends Controller
             if ($request->has('empaque_ids')) {
                 $product->empaques()->sync($request->input('empaque_ids'));
             }
-
+            // Sincronizar sellos (muchos a muchos)
+            if ($request->has('octogon_ids')) {
+                $product->octogons()->sync($request->input('octogon_ids'));
+            }
             return response()->json($this->format($product->fresh()));
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
@@ -146,7 +151,8 @@ public function destroy(Product $product)
 
         // Empaques: cascade ya las elimina, pero por claridad:
         $product->empaques()->detach();
-
+        // Sellos: cascade ya las elimina, pero por claridad:
+        $product->octogons()->detach();
         // Eliminar producto
         $product->delete();
 

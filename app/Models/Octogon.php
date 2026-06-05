@@ -19,4 +19,8 @@ class Octogon extends Model
     protected $casts = [
         'order' => 'integer',
     ];
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'octogon_product');
+    }
 }

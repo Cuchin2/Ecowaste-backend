@@ -47,6 +47,10 @@ class Product extends Model
     {
         return $this->belongsToMany(Empaque::class, 'empaque_product');
     }
+    public function octogons()
+    {
+        return $this->belongsToMany(Octogon::class, 'octogon_product');
+    }
     // Auto-generar slug y code
     protected static function boot()
     {
