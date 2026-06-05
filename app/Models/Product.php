@@ -43,6 +43,10 @@ class Product extends Model
     {
         return $this->morphToMany(Tag::class, 'taggable');
     }
+    public function empaques()
+    {
+        return $this->belongsToMany(Empaque::class, 'empaque_product');
+    }
     // Auto-generar slug y code
     protected static function boot()
     {

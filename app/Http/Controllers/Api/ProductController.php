@@ -85,6 +85,8 @@ class ProductController extends Controller
             'remove_img_nutrition' => 'sometimes|boolean',
             'tag_ids'             => 'sometimes|array',
             'tag_ids.*'           => 'exists:tags,id',
+            'empaque_ids'         => 'sometimes|array',          // 👈 nuevo
+            'empaque_ids.*'       => 'exists:empaques,id',      // 👈 nuevo
         ]);
 
         try {
@@ -116,9 +118,14 @@ class ProductController extends Controller
 
             $product->update($data);
 
-            // Sincronizar etiquetas solo si se envió el campo
+            // Sincronizar etiquetas
             if ($request->has('tag_ids')) {
                 $product->tags()->sync($request->input('tag_ids'));
+            }
+
+            // Sincronizar empaques (muchos a muchos)
+            if ($request->has('empaque_ids')) {
+                $product->empaques()->sync($request->input('empaque_ids'));
             }
 
             return response()->json($this->format($product->fresh()));
@@ -127,17 +134,27 @@ class ProductController extends Controller
         }
     }
 
-    public function destroy(Product $product)
-    {
-        try {
-            if ($product->image) $this->deleteImage($product->image);
-            if ($product->img_nutrition) $this->deleteImage($product->img_nutrition);
-            $product->delete();
-            return response()->json(['message' => 'Producto eliminado correctamente']);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
-        }
+public function destroy(Product $product)
+{
+    try {
+        // Eliminar imágenes físicas
+        if ($product->image) $this->deleteImage($product->image);
+        if ($product->img_nutrition) $this->deleteImage($product->img_nutrition);
+
+        // Eliminar relaciones polimórficas (taggables)
+        $product->tags()->detach();
+
+        // Empaques: cascade ya las elimina, pero por claridad:
+        $product->empaques()->detach();
+
+        // Eliminar producto
+        $product->delete();
+
+        return response()->json(['message' => 'Producto eliminado correctamente']);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
     }
+}
 
     public function reorder(Request $request)
     {

@@ -19,4 +19,8 @@ class Empaque extends Model
     protected $casts = [
         'tipo' => 'boolean',
     ];
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'empaque_product');
+    }
 }
