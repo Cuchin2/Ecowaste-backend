@@ -21,4 +21,9 @@ class ColorFlavor extends Model
     protected $casts = [
         'type' => 'string',
     ];
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'color_flavor_product')
+                    ->withPivot('order');
+    }
 }

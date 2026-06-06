@@ -66,7 +66,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load(['category','brand','tags','empaques','octogons']);
+        $product->load(['category','brand','tags','empaques','octogons','colorFlavors']);
         return response()->json($this->format($product));
     }
 
@@ -89,6 +89,9 @@ class ProductController extends Controller
             'empaque_ids.*'       => 'exists:empaques,id',      // 👈 nuevo
             'octogon_ids'        => 'sometimes|array',
             'octogon_ids.*'      => 'exists:octogons,id',
+            // 👇 Validación para color_flavor_ids
+            'color_flavor_ids'    => 'sometimes|array',
+            'color_flavor_ids.*'  => 'exists:color_flavor,id',
         ]);
 
         try {
@@ -133,6 +136,14 @@ class ProductController extends Controller
             if ($request->has('octogon_ids')) {
                 $product->octogons()->sync($request->input('octogon_ids'));
             }
+            // 👇 Sincronizar color-flavors CON ORDEN
+            if ($request->has('color_flavor_ids')) {
+                $orderedIds = [];
+                foreach ($request->input('color_flavor_ids') as $index => $colorFlavorId) {
+                    $orderedIds[$colorFlavorId] = ['order' => $index];
+                }
+                $product->colorFlavors()->sync($orderedIds);
+            }
             return response()->json($this->format($product->fresh()));
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
@@ -153,6 +164,8 @@ public function destroy(Product $product)
         $product->empaques()->detach();
         // Sellos: cascade ya las elimina, pero por claridad:
         $product->octogons()->detach();
+         // Colores: cascade ya las elimina, pero por claridad:
+        $product->colorFlavors()->detach(); // 👈 Añadir esta línea
         // Eliminar producto
         $product->delete();
 

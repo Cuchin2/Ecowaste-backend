@@ -51,6 +51,12 @@ class Product extends Model
     {
         return $this->belongsToMany(Octogon::class, 'octogon_product');
     }
+    public function colorFlavors()
+    {
+        return $this->belongsToMany(ColorFlavor::class, 'color_flavor_product')
+                    ->withPivot('order')
+                    ->orderBy('pivot_order'); // 👈 Siempre ordenados al consultar
+    }
     // Auto-generar slug y code
     protected static function boot()
     {
