@@ -79,7 +79,7 @@ class ProductController extends Controller
 
         // Cargar las relaciones del pivote para cada color/sabor
         $product->colorFlavors->each(function ($colorFlavor) {
-            $colorFlavor->pivot->load(['ingredients', 'octogons', 'traces']);
+            $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
         });
 
         return response()->json($this->format($product));
