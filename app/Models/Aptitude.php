@@ -23,4 +23,8 @@ class Aptitude extends Model
     protected $casts = [
         'order' => 'integer',
     ];
+    public function productVariants()
+    {
+        return $this->belongsToMany(ColorFlavorProduct::class, 'variant_ingredients', 'ingredient_id', 'color_flavor_product_id');
+    }
 }

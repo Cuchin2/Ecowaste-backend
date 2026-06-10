@@ -18,9 +18,9 @@ class ColorFlavorProduct extends Pivot
                     ->withTimestamps();
     }
 
-    public function octogons()
+    public function aptitudes()
     {
-        return $this->belongsToMany(Octogon::class, 'variant_octogons', 'color_flavor_product_id', 'octogon_id')
+        return $this->belongsToMany(Aptitude::class, 'variant_aptitudes', 'color_flavor_product_id', 'aptitude_id')
                     ->withTimestamps();
     }
 
