@@ -75,6 +75,7 @@ class ProductController extends Controller
             'empaques',
             'octogons',
             'colorFlavors',
+            'sizes',
         ]);
 
         // Cargar las relaciones del pivote para cada color/sabor
@@ -104,6 +105,8 @@ class ProductController extends Controller
             'empaque_ids.*'       => 'exists:empaques,id',      // 👈 nuevo
             'octogon_ids'        => 'sometimes|array',
             'octogon_ids.*'      => 'exists:octogons,id',
+            'size_ids' => 'sometimes|array',
+            'size_ids.*' => 'exists:sizes,id',
             // 👇 Validación para color_flavor_ids
             'color_flavor_ids'    => 'sometimes|array',
             'color_flavor_ids.*'  => 'exists:color_flavor,id',
@@ -150,6 +153,10 @@ class ProductController extends Controller
             // Sincronizar sellos (muchos a muchos)
             if ($request->has('octogon_ids')) {
                 $product->octogons()->sync($request->input('octogon_ids'));
+            }
+            // Sincronizar Tamaños 
+            if ($request->has('size_ids')) {
+                $product->sizes()->sync($request->input('size_ids'));
             }
             // 👇 Sincronizar color-flavors CON ORDEN
             if ($request->has('color_flavor_ids')) {
@@ -212,6 +219,8 @@ class ProductController extends Controller
                 $product->empaques()->detach();
                 // Sellos: cascade ya las elimina, pero por claridad:
                 $product->octogons()->detach();
+                // Tamaños: cascade ya laselimina, pero por Claridad:
+                $product->sizes()->detach();
                 // Colores: cascade ya las elimina, pero por claridad:
                 $product->colorFlavors()->detach(); // 👈 Añadir esta línea
                 // Eliminar producto

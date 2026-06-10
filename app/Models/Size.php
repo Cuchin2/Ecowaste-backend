@@ -14,4 +14,8 @@ class Size extends Model
         'tipo_unidad',
         'codigo',
     ];
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'product_size');
+    }
 }
