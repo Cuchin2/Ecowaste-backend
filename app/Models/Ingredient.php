@@ -34,4 +34,8 @@ class Ingredient extends Model
             }
         });
     }
+    public function productVariants()
+    {
+        return $this->belongsToMany(ColorFlavorProduct::class, 'variant_ingredients', 'ingredient_id', 'color_flavor_product_id');
+    }
 }

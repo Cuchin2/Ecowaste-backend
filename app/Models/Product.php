@@ -54,9 +54,11 @@ class Product extends Model
     public function colorFlavors()
     {
         return $this->belongsToMany(ColorFlavor::class, 'color_flavor_product')
-                    ->withPivot('order')
-                    ->orderBy('pivot_order'); // 👈 Siempre ordenados al consultar
+                    ->using(ColorFlavorProduct::class)   // modelo pivot personalizado
+                    ->withPivot('id', 'order')           // incluir id y order del pivot
+                    ->orderBy('pivot_order');            // mantener ordenación
     }
+
     // Auto-generar slug y code
     protected static function boot()
     {

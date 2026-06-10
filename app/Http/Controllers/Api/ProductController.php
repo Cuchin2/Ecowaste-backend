@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Traits\UploadsImages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Models\ColorFlavorProduct;
 
 class ProductController extends Controller
 {
@@ -66,7 +67,21 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load(['category','brand','tags','empaques','octogons','colorFlavors']);
+        // Cargar relaciones directas del producto
+        $product->load([
+            'category',
+            'brand',
+            'tags',
+            'empaques',
+            'octogons',
+            'colorFlavors',
+        ]);
+
+        // Cargar las relaciones del pivote para cada color/sabor
+        $product->colorFlavors->each(function ($colorFlavor) {
+            $colorFlavor->pivot->load(['ingredients', 'octogons', 'traces']);
+        });
+
         return response()->json($this->format($product));
     }
 
@@ -144,6 +159,34 @@ class ProductController extends Controller
                 }
                 $product->colorFlavors()->sync($orderedIds);
             }
+        //
+        // Ahora procesar las variantes (ingredientes, octógonos, trazas)
+        if ($request->has('variants')) {
+            // Obtener todos los pivotes actuales del producto
+            $pivots = ColorFlavorProduct::where('product_id', $product->id)->get()->keyBy('color_flavor_id');
+            
+            foreach ($request->input('variants') as $variantData) {
+                $colorFlavorId = $variantData['color_flavor_id'];
+                if (!isset($pivots[$colorFlavorId])) {
+                    continue; // No debería ocurrir, pero por seguridad
+                }
+                $pivot = $pivots[$colorFlavorId];
+                
+                // Sincronizar ingredientes
+                if (isset($variantData['ingredient_ids'])) {
+                    $pivot->ingredients()->sync($variantData['ingredient_ids']);
+                }
+                // Sincronizar octógonos
+                if (isset($variantData['octogon_ids'])) {
+                    $pivot->octogons()->sync($variantData['octogon_ids']);
+                }
+                // Sincronizar trazas
+                if (isset($variantData['trace_ids'])) {
+                    $pivot->traces()->sync($variantData['trace_ids']);
+                }
+            }
+        }
+        //
             return response()->json($this->format($product->fresh()));
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
