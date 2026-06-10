@@ -162,61 +162,66 @@ class ProductController extends Controller
         //
         // Ahora procesar las variantes (ingredientes, octógonos, trazas)
         if ($request->has('variants')) {
+            $variantsData = json_decode($request->input('variants'), true);
+            if (!is_array($variantsData)) {
+                // Si no es un array válido, puedes lanzar una excepción o simplemente ignorarlo
+                throw new \Exception('Formato de variantes inválido');
+            }
             // Obtener todos los pivotes actuales del producto
             $pivots = ColorFlavorProduct::where('product_id', $product->id)->get()->keyBy('color_flavor_id');
-            
-            foreach ($request->input('variants') as $variantData) {
-                $colorFlavorId = $variantData['color_flavor_id'];
-                if (!isset($pivots[$colorFlavorId])) {
-                    continue; // No debería ocurrir, pero por seguridad
+
+            foreach ($variantsData as $variantData) {
+                $colorFlavorId = $variantData['color_flavor_id'] ?? null;
+                if (!$colorFlavorId || !isset($pivots[$colorFlavorId])) {
+                    continue; // Saltar si no existe el pivot
                 }
                 $pivot = $pivots[$colorFlavorId];
-                
+
                 // Sincronizar ingredientes
-                if (isset($variantData['ingredient_ids'])) {
+                if (isset($variantData['ingredient_ids']) && is_array($variantData['ingredient_ids'])) {
                     $pivot->ingredients()->sync($variantData['ingredient_ids']);
                 }
                 // Sincronizar octógonos
-                if (isset($variantData['octogon_ids'])) {
+                if (isset($variantData['octogon_ids']) && is_array($variantData['octogon_ids'])) {
                     $pivot->octogons()->sync($variantData['octogon_ids']);
                 }
                 // Sincronizar trazas
-                if (isset($variantData['trace_ids'])) {
+                if (isset($variantData['trace_ids']) && is_array($variantData['trace_ids'])) {
                     $pivot->traces()->sync($variantData['trace_ids']);
                 }
             }
         }
-        //
-            return response()->json($this->format($product->fresh()));
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
+                //
+                    return response()->json($this->format($product->fresh()));
+                } catch (\Exception $e) {
+                    return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
+                }
+            }
+
+        public function destroy(Product $product)
+        {
+            try {
+                // Eliminar imágenes físicas
+                if ($product->image) $this->deleteImage($product->image);
+                if ($product->img_nutrition) $this->deleteImage($product->img_nutrition);
+
+                // Eliminar relaciones polimórficas (taggables)
+                $product->tags()->detach();
+
+                // Empaques: cascade ya las elimina, pero por claridad:
+                $product->empaques()->detach();
+                // Sellos: cascade ya las elimina, pero por claridad:
+                $product->octogons()->detach();
+                // Colores: cascade ya las elimina, pero por claridad:
+                $product->colorFlavors()->detach(); // 👈 Añadir esta línea
+                // Eliminar producto
+                $product->delete();
+
+                return response()->json(['message' => 'Producto eliminado correctamente']);
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
+            }
         }
-    }
-
-public function destroy(Product $product)
-{
-    try {
-        // Eliminar imágenes físicas
-        if ($product->image) $this->deleteImage($product->image);
-        if ($product->img_nutrition) $this->deleteImage($product->img_nutrition);
-
-        // Eliminar relaciones polimórficas (taggables)
-        $product->tags()->detach();
-
-        // Empaques: cascade ya las elimina, pero por claridad:
-        $product->empaques()->detach();
-        // Sellos: cascade ya las elimina, pero por claridad:
-        $product->octogons()->detach();
-         // Colores: cascade ya las elimina, pero por claridad:
-        $product->colorFlavors()->detach(); // 👈 Añadir esta línea
-        // Eliminar producto
-        $product->delete();
-
-        return response()->json(['message' => 'Producto eliminado correctamente']);
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
-    }
-}
 
     public function reorder(Request $request)
     {
