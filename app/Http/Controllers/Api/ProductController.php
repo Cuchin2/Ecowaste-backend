@@ -183,7 +183,7 @@ class ProductController extends Controller
                 }
                 // Sincronizar octógonos
                 if (isset($variantData['aptitude_ids']) && is_array($variantData['aptitude_ids'])) {
-                    $pivot->octogons()->sync($variantData['aptitude_ids']);
+                    $pivot->aptitudes()->sync($variantData['aptitude_ids']);
                 }
                 // Sincronizar trazas
                 if (isset($variantData['trace_ids']) && is_array($variantData['trace_ids'])) {
