@@ -327,8 +327,8 @@ private function syncSkus(Product $product): void
         $product->skus()->createMany($newCombinations);
     }
 }
-private function generateSkuCode(string $brandCode, string $productCode, string $colorCode, string $sizeCode): string
+private function generateSkuCode(?string $brandCode, ?string $productCode, ?string $colorCode, ?string $sizeCode): string
 {
-    return $brandCode . $productCode . $colorCode . $sizeCode;
+    return ($brandCode ?? '') . ($productCode ?? '') . ($colorCode ?? '') . ($sizeCode ?? '');
 }
 }
