@@ -269,11 +269,13 @@ class ProductController extends Controller
 
 private function syncSkus(Product $product): void
 {
-    $product->load(['brand', 'colorFlavors', 'sizes']);
+    $product->load(['brand', 'colorFlavors', 'sizes','empaques']);
 
     $colorFlavorIds = $product->colorFlavors->pluck('id')->toArray();
     $sizeIds = $product->sizes->pluck('id')->toArray();
-
+    // Obtener código del empaque (si existe)
+    $empaqueCode = $product->empaques->first()?->code ?? '';
+    // Si no hay colores o tamaños, eliminar SKU
     if (empty($colorFlavorIds) || empty($sizeIds)) {
         $product->skus()->delete();
         return;
@@ -308,7 +310,7 @@ private function syncSkus(Product $product): void
             $colorCode = $colorFlavor?->code ?? 'COL_' . $combo['color_flavor_id'];
             $sizeCode = $size?->code ?? 'SIZ_' . $combo['size_id'];
 
-            $code = $this->generateSkuCode($product, $colorCode, $sizeCode);
+            $code = $this->generateSkuCode($product, $colorCode, $sizeCode, $empaqueCode);
             $toCreate[] = [
                 'product_id' => $product->id,
                 'color_flavor_id' => $combo['color_flavor_id'],
@@ -334,12 +336,12 @@ private function syncSkus(Product $product): void
         $product->skus()->createMany($toCreate);
     }
 }
-private function generateSkuCode(Product $product, string $colorCode, string $sizeCode): string
+private function generateSkuCode(Product $product, string $colorCode, string $sizeCode, string $empaqueCode): string
 {
     $brandCode = $product->brand->code ?? '';
     $productCode = $product->code ?? '';
     $productId = $product->id;
-    return $brandCode . $productCode . $colorCode . $sizeCode . '_' . $productId;
-
+    // Ejemplo: "EW0001" + "RD" + "B" + "XL" + "_9" = "EW0001RDBXL_9"
+    return $brandCode . $productCode . $colorCode . $empaqueCode . $sizeCode . '_' . $productId;
 }
 }
