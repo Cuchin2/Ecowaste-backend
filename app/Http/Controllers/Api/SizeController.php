@@ -26,12 +26,12 @@ class SizeController extends Controller
         $validated = $request->validate([
             'name'        => 'required|string|max:100',
             'tipo_unidad' => 'required|string|max:20',
-            'codigo'      => [
+            'code'      => [
                 'required',
                 'string',
                 'size:2',
                 'regex:/^[A-Z0-9]{2}$/',
-                'unique:sizes,codigo'
+                'unique:sizes,code'
             ],
         ]);
 
@@ -64,12 +64,12 @@ class SizeController extends Controller
         $validated = $request->validate([
             'name'        => 'sometimes|string|max:100',
             'tipo_unidad' => 'sometimes|string|max:20',
-            'codigo'      => [
+            'code'      => [
                 'sometimes',
                 'string',
                 'size:2',
                 'regex:/^[A-Z0-9]{2}$/',
-                'unique:sizes,codigo,' . $size->id
+                'unique:sizes,code,' . $size->id
             ],
         ]);
 
