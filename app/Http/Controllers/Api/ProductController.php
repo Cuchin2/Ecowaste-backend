@@ -173,6 +173,7 @@ class ProductController extends Controller
         // 🔥 GENERAR SKU automáticamente después de sincronizar colores y tamaños
                 $product->load(['colorFlavors', 'sizes']);
                 $this->syncSkus($product);
+                $skuDebug = $this->syncSkus($product);
                 return response()->json([
                     'product' => $this->format($product->fresh()),
                     'sku_debug' => $skuDebug,
