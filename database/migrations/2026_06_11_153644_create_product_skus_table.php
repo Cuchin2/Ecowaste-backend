@@ -16,8 +16,8 @@ return new class extends Migration
             $table->foreignId('empaque_id')->nullable()->constrained()->onDelete('set null'); // 👈 nuevo
             $table->string('code')->unique();
             $table->string('name')->nullable();
-            $table->decimal('sell_price', 12, 2);
-            $table->integer('stock')->default(0);
+            $table->decimal('sell_price', 12, 2)->nullable();;
+            $table->integer('stock')->default(0)->nullable();;
             $table->boolean('offer')->default(false);
             $table->decimal('offer_price', 12, 2)->nullable();
             $table->timestamps();
