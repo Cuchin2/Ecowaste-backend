@@ -79,12 +79,19 @@ class ProductController extends Controller
             'octogons',
             'colorFlavors',
             'sizes',
+            'skus',               // 👈 Cargar también los SKU
         ]);
 
         // Cargar las relaciones del pivote para cada color/sabor
         $product->colorFlavors->each(function ($colorFlavor) {
             $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
         });
+
+        // Ordenar los SKU según el orden de los colores
+        $colorOrder = $product->colorFlavors->pluck('id')->toArray();
+        $product->skus = $product->skus->sortBy(function ($sku) use ($colorOrder) {
+            return array_search($sku->color_flavor_id, $colorOrder);
+        })->values();
 
         return response()->json($this->format($product));
     }
