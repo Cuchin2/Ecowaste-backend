@@ -75,13 +75,18 @@ public function show(Product $product)
         'colorFlavors', 'sizes', 'skus'
     ]);
 
-    // Obtener IDs de colores en el orden de pivot.order
-    $orderedColorIds = $product->colorFlavors->sortBy('pivot.order')->pluck('id')->values()->toArray();
+    // Los colorFlavors ya están ordenados por pivot.order gracias a la relación
+    $orderedColorIds = $product->colorFlavors->pluck('id')->toArray();
 
-    // Ordenar SKU según la posición del color (y luego por size_id)
-    $positionMap = array_flip($orderedColorIds); // [color_id => posición]
+    // Mapa de posición: color_id => índice
+    $positionMap = array_flip($orderedColorIds);
+
+    // Ordenar SKU según la posición del color y luego por size_id
     $product->skus = $product->skus->sortBy(function ($sku) use ($positionMap) {
-        return [$positionMap[$sku->color_flavor_id] ?? PHP_INT_MAX, $sku->size_id];
+        return [
+            $positionMap[$sku->color_flavor_id] ?? PHP_INT_MAX,
+            $sku->size_id
+        ];
     })->values();
 
     // Cargar relaciones anidadas del pivote
