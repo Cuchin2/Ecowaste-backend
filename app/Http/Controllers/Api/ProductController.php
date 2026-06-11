@@ -70,6 +70,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
+        // Cargar relaciones directas del producto
         $product->load([
             'category',
             'brand',
@@ -78,21 +79,18 @@ class ProductController extends Controller
             'octogons',
             'colorFlavors',
             'sizes',
-            'skus',
+            'skus',               // 👈 Cargar también los SKU
         ]);
 
-        // Cargar relaciones anidadas del pivote
+        // Cargar las relaciones del pivote para cada color/sabor
         $product->colorFlavors->each(function ($colorFlavor) {
             $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
         });
 
-        // Crear un mapa de orden de colores (ID => posición)
-        $colorOrderMap = $product->colorFlavors->pluck('id')->flip()->toArray(); // ej: [3 => 0, 2 => 1, 1 => 2]
-
-        // Ordenar SKU: primero por posición del color, luego por size_id (para consistencia)
-        $product->skus = $product->skus->sortBy(function ($sku) use ($colorOrderMap) {
-            $colorPos = $colorOrderMap[$sku->color_flavor_id] ?? 9999; // si no tiene color, al final
-            return [$colorPos, $sku->size_id];
+        // Ordenar los SKU según el orden de los colores
+        $colorOrder = $product->colorFlavors->pluck('order')->toArray();
+        $product->skus = $product->skus->sortBy(function ($sku) use ($colorOrder) {
+            return array_search($sku->color_flavor_id, $colorOrder);
         })->values();
 
         return response()->json($this->format($product));

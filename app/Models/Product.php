@@ -64,13 +64,7 @@ class Product extends Model
     }
     public function skus()
     {
-        return $this->hasMany(ProductSku::class)
-                    ->join('color_flavor_product', function ($join) {
-                        $join->on('product_skus.color_flavor_id', '=', 'color_flavor_product.color_flavor_id')
-                            ->where('color_flavor_product.product_id', '=', $this->id);
-                    })
-                    ->orderBy('color_flavor_product.order')
-                    ->orderBy('product_skus.size_id');
+        return $this->hasMany(ProductSku::class);
     }
     // Auto-generar slug y code
     protected static function boot()
