@@ -113,17 +113,12 @@ public function show(Product $product)
             'img_nutrition'       => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'remove_image'        => 'sometimes|boolean',
             'remove_img_nutrition' => 'sometimes|boolean',
-            'tag_ids'             => 'sometimes|array',
-            'tag_ids.*'           => 'exists:tags,id',
-            'empaque_ids'         => 'sometimes|array',          // 👈 nuevo
-            'empaque_ids.*'       => 'exists:empaques,id',      // 👈 nuevo
-            'octogon_ids'        => 'sometimes|array',
-            'octogon_ids.*'      => 'exists:octogons,id',
-            'size_ids' => 'sometimes|array',
-            'size_ids.*' => 'exists:sizes,id',
+            'tag_ids'             => 'sometimes|string',
+            'empaque_ids'         => 'sometimes|string', 
+            'octogon_ids'        => 'sometimes|string',
+            'size_ids' => 'sometimes|string',
             // 👇 Validación para color_flavor_ids
-            'color_flavor_ids'    => 'sometimes|array',
-            'color_flavor_ids.*'  => 'exists:color_flavor,id',
+            'color_flavor_ids'    => 'sometimes|string',
         ]);
 
         try {
@@ -155,31 +150,49 @@ public function show(Product $product)
 
             $product->update($data);
 
-            // Sincronizar etiquetas
-            if ($request->has('tag_ids')) {
-                $product->tags()->sync($request->input('tag_ids'));
+        // Sincronizar etiquetas
+        if ($request->filled('tag_ids')) {
+            $tagIds = json_decode($request->input('tag_ids'), true);
+            if (is_array($tagIds)) {
+                $product->tags()->sync($tagIds);
             }
+        }
 
-            // Sincronizar empaques (muchos a muchos)
-            if ($request->has('empaque_ids')) {
-                $product->empaques()->sync($request->input('empaque_ids'));
+        // Sincronizar empaques
+        if ($request->filled('empaque_ids')) {
+            $empaqueIds = json_decode($request->input('empaque_ids'), true);
+            if (is_array($empaqueIds)) {
+                $product->empaques()->sync($empaqueIds);
             }
-            // Sincronizar sellos (muchos a muchos)
-            if ($request->has('octogon_ids')) {
-                $product->octogons()->sync($request->input('octogon_ids'));
+        }
+
+        // Sincronizar tamaños
+        if ($request->filled('size_ids')) {
+            $sizeIds = json_decode($request->input('size_ids'), true);
+            if (is_array($sizeIds)) {
+                $product->sizes()->sync($sizeIds);
             }
-            // Sincronizar Tamaños 
-            if ($request->has('size_ids')) {
-                $product->sizes()->sync($request->input('size_ids'));
+        }
+
+        // Sincronizar octógonos
+        if ($request->filled('octogon_ids')) {
+            $octogonIds = json_decode($request->input('octogon_ids'), true);
+            if (is_array($octogonIds)) {
+                $product->octogons()->sync($octogonIds);
             }
-            // 👇 Sincronizar color-flavors CON ORDEN
-            if ($request->has('color_flavor_ids')) {
+        }
+
+        // Sincronizar colores/sabores CON ORDEN
+        if ($request->filled('color_flavor_ids')) {
+            $colorFlavorIds = json_decode($request->input('color_flavor_ids'), true);
+            if (is_array($colorFlavorIds)) {
                 $orderedIds = [];
-                foreach ($request->input('color_flavor_ids') as $index => $colorFlavorId) {
-                    $orderedIds[$colorFlavorId] = ['order' => $index];
+                foreach ($colorFlavorIds as $index => $id) {
+                    $orderedIds[$id] = ['order' => $index];
                 }
                 $product->colorFlavors()->sync($orderedIds);
             }
+        }
         //
         // 🔥 GENERAR SKU automáticamente después de sincronizar colores y tamaños
                 $product->load(['colorFlavors', 'sizes']);
