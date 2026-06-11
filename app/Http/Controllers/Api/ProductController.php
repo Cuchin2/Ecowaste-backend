@@ -172,15 +172,11 @@ class ProductController extends Controller
         //
         // 🔥 GENERAR SKU automáticamente después de sincronizar colores y tamaños
                 $product->load(['colorFlavors', 'sizes']);
+                $this->syncSkus($product);
                 return response()->json([
                     'product' => $this->format($product->fresh()),
-                    'debug' => [
-                        'color_ids' => $product->colorFlavors->pluck('id'),
-                        'size_ids' => $product->sizes->pluck('id'),
-                        'skus_generated' => $product->skus->count(),
-                    ]
+                    'sku_debug' => $skuDebug,
                 ]);
-                $this->syncSkus($product);
         // Procesar  las variantes (ingredientes, octógonos, trazas)
         if ($request->has('variants')) {
             $variantsData = json_decode($request->input('variants'), true);
