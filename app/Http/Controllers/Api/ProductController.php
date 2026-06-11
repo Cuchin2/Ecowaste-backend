@@ -338,10 +338,6 @@ private function syncSkus(Product $product): void
     if (!empty($toCreate)) {
         $product->skus()->createMany($toCreate);
     }
-    return response()->json([
-        'color_flavors' => $product->colorFlavors->toArray(),
-        'sizes' => $product->sizes->toArray(),
-    ]);
 }
 private function generateSkuCode(Product $product, string $colorCode, string $sizeCode): string
 {
