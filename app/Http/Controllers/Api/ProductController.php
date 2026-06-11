@@ -171,7 +171,8 @@ class ProductController extends Controller
             }
         //
         // 🔥 GENERAR SKU automáticamente después de sincronizar colores y tamaños
-              $this->syncSkus($product);
+                $product->load(['colorFlavors', 'sizes']);
+                $this->syncSkus($product);
         // Procesar  las variantes (ingredientes, octógonos, trazas)
         if ($request->has('variants')) {
             $variantsData = json_decode($request->input('variants'), true);
@@ -268,51 +269,51 @@ class ProductController extends Controller
 
 private function syncSkus(Product $product): void
 {
-    // Obtener todos los IDs de color_flavor y size asociados al producto
+    // Recargar las relaciones por si acaso (ya deberían estar cargadas desde fuera)
+    $product->load(['brand', 'colorFlavors', 'sizes']);
+
     $colorFlavorIds = $product->colorFlavors->pluck('id')->toArray();
     $sizeIds = $product->sizes->pluck('id')->toArray();
 
-    // Si no hay colores o no hay tamaños, eliminar todos los SKU y salir
+    // Si falta alguno, eliminar todos los SKU y salir
     if (empty($colorFlavorIds) || empty($sizeIds)) {
         $product->skus()->delete();
         return;
     }
 
-    // Construir el código base: brand_code + product_code
     $brandCode = $product->brand->code ?? '';
     $productCode = $product->code ?? '';
 
-    // Obtener todas las combinaciones posibles (producto cartesiano)
+    // Generar todas las combinaciones posibles
     $combinations = [];
     foreach ($colorFlavorIds as $cfId) {
         foreach ($sizeIds as $sId) {
             $combinations[] = [
                 'color_flavor_id' => $cfId,
                 'size_id' => $sId,
+                'key' => $cfId . '_' . $sId,
             ];
         }
     }
 
-    // Obtener los SKU existentes (para no recrearlos)
+    // Obtener los SKU existentes indexados por la clave compuesta
     $existingSkus = $product->skus->keyBy(function ($sku) {
         return $sku->color_flavor_id . '_' . $sku->size_id;
     });
 
-    $newCombinations = [];
+    // Preparar los nuevos SKU
+    $toCreate = [];
     foreach ($combinations as $combo) {
-        $key = $combo['color_flavor_id'] . '_' . $combo['size_id'];
+        $key = $combo['key'];
         if (!isset($existingSkus[$key])) {
             $colorFlavor = ColorFlavor::find($combo['color_flavor_id']);
             $size = Size::find($combo['size_id']);
-
             // Verificar que los códigos no sean nulos
             if (is_null($colorFlavor?->code) || is_null($size?->code)) {
-                // Si alguno es nulo, no se genera SKU para esta combinación
                 continue;
             }
-
             $code = $this->generateSkuCode($product, $colorFlavor->code, $size->code);
-            $newCombinations[] = [
+            $toCreate[] = [
                 'product_id' => $product->id,
                 'color_flavor_id' => $combo['color_flavor_id'],
                 'size_id' => $combo['size_id'],
@@ -324,8 +325,8 @@ private function syncSkus(Product $product): void
         }
     }
 
-    // Eliminar SKU que ya no corresponden a ninguna combinación
-    $keysToKeep = collect($combinations)->map(fn($c) => $c['color_flavor_id'] . '_' . $c['size_id'])->toArray();
+    // Eliminar los SKU que ya no corresponden a ninguna combinación
+    $keysToKeep = collect($combinations)->pluck('key')->toArray();
     $product->skus->each(function ($sku) use ($keysToKeep) {
         $key = $sku->color_flavor_id . '_' . $sku->size_id;
         if (!in_array($key, $keysToKeep)) {
@@ -334,8 +335,8 @@ private function syncSkus(Product $product): void
     });
 
     // Crear los nuevos SKU
-    if (!empty($newCombinations)) {
-        $product->skus()->createMany($newCombinations);
+    if (!empty($toCreate)) {
+        $product->skus()->createMany($toCreate);
     }
 }
 private function generateSkuCode(Product $product, string $colorCode, string $sizeCode): string
