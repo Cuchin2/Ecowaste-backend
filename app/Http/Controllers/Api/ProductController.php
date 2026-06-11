@@ -272,7 +272,7 @@ private function syncSkus(Product $product): void
     $colorFlavorIds = $product->colorFlavors->pluck('id')->toArray();
     $sizeIds = $product->sizes->pluck('id')->toArray();
 
-    // Si no hay colores ni tamaños, eliminar todos los SKU y salir
+    // Si no hay colores o no hay tamaños, eliminar todos los SKU y salir
     if (empty($colorFlavorIds) || empty($sizeIds)) {
         $product->skus()->delete();
         return;
@@ -293,8 +293,8 @@ private function syncSkus(Product $product): void
         }
     }
 
-    // Obtener los SKU existentes (para evitar eliminarlos si ya existen)
-    $existingSkus = $product->skus()->get()->keyBy(function ($sku) {
+    // Obtener los SKU existentes (para no recrearlos)
+    $existingSkus = $product->skus->keyBy(function ($sku) {
         return $sku->color_flavor_id . '_' . $sku->size_id;
     });
 
@@ -302,16 +302,22 @@ private function syncSkus(Product $product): void
     foreach ($combinations as $combo) {
         $key = $combo['color_flavor_id'] . '_' . $combo['size_id'];
         if (!isset($existingSkus[$key])) {
-            // Necesitamos obtener los códigos individuales
             $colorFlavor = ColorFlavor::find($combo['color_flavor_id']);
             $size = Size::find($combo['size_id']);
+
+            // Verificar que los códigos no sean nulos
+            if (is_null($colorFlavor?->code) || is_null($size?->code)) {
+                // Si alguno es nulo, no se genera SKU para esta combinación
+                continue;
+            }
+
             $code = $this->generateSkuCode($product, $colorFlavor->code, $size->code);
             $newCombinations[] = [
                 'product_id' => $product->id,
                 'color_flavor_id' => $combo['color_flavor_id'],
                 'size_id' => $combo['size_id'],
                 'code' => $code,
-                'sell_price' => 0,          // valores por defecto, luego se editan
+                'sell_price' => 0,
                 'stock' => 0,
                 'offer' => false,
             ];
@@ -319,8 +325,13 @@ private function syncSkus(Product $product): void
     }
 
     // Eliminar SKU que ya no corresponden a ninguna combinación
-    $keysToKeep = array_keys($combinations);
-    $product->skus()->whereNotIn(DB::raw('CONCAT(color_flavor_id, "_", size_id)'), $keysToKeep)->delete();
+    $keysToKeep = collect($combinations)->map(fn($c) => $c['color_flavor_id'] . '_' . $c['size_id'])->toArray();
+    $product->skus->each(function ($sku) use ($keysToKeep) {
+        $key = $sku->color_flavor_id . '_' . $sku->size_id;
+        if (!in_array($key, $keysToKeep)) {
+            $sku->delete();
+        }
+    });
 
     // Crear los nuevos SKU
     if (!empty($newCombinations)) {
