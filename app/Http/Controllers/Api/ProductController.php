@@ -340,8 +340,7 @@ private function generateSkuCode(Product $product, string $colorCode, string $si
 {
     $brandCode = $product->brand->code ?? '';
     $productCode = $product->code ?? '';
-    $productId = $product->id;
     // Ejemplo: "EW0001" + "RD" + "B" + "XL" + "_9" = "EW0001RDBXL_9"
-    return $brandCode . $productCode . $colorCode . $empaqueCode . $sizeCode . '_' . $productId;
+    return $brandCode . $productCode . $colorCode . $empaqueCode . $sizeCode;
 }
 }
