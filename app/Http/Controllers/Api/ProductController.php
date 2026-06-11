@@ -10,10 +10,11 @@ use App\Traits\UploadsImages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ColorFlavorProduct;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
-    use UploadsImages;
+    use UploadsImages; // Trait para uploadImage y deleteImage
 
     private function imageUrl(?string $path): ?string
     {
@@ -34,6 +35,7 @@ class ProductController extends Controller
             ->orderBy('name')
             ->paginate($request->get('per_page', 15));
 
+        // Transformar cada producto para añadir las URLs
         $products->getCollection()->transform(fn($p) => $this->format($p));
         return response()->json($products);
     }
@@ -68,6 +70,7 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
+        // Cargar relaciones directas del producto
         $product->load([
             'category',
             'brand',
@@ -78,6 +81,7 @@ class ProductController extends Controller
             'sizes',
         ]);
 
+        // Cargar las relaciones del pivote para cada color/sabor
         $product->colorFlavors->each(function ($colorFlavor) {
             $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
         });
@@ -100,18 +104,19 @@ class ProductController extends Controller
             'remove_img_nutrition' => 'sometimes|boolean',
             'tag_ids'             => 'sometimes|array',
             'tag_ids.*'           => 'exists:tags,id',
-            'empaque_ids'         => 'sometimes|array',
-            'empaque_ids.*'       => 'exists:empaques,id',
-            'octogon_ids'         => 'sometimes|array',
-            'octogon_ids.*'       => 'exists:octogons,id',
-            'size_ids'            => 'sometimes|array',
-            'size_ids.*'          => 'exists:sizes,id',
+            'empaque_ids'         => 'sometimes|array',          // 👈 nuevo
+            'empaque_ids.*'       => 'exists:empaques,id',      // 👈 nuevo
+            'octogon_ids'        => 'sometimes|array',
+            'octogon_ids.*'      => 'exists:octogons,id',
+            'size_ids' => 'sometimes|array',
+            'size_ids.*' => 'exists:sizes,id',
+            // 👇 Validación para color_flavor_ids
             'color_flavor_ids'    => 'sometimes|array',
             'color_flavor_ids.*'  => 'exists:color_flavor,id',
         ]);
 
         try {
-            // Imagen principal
+            // Manejo de imagen principal
             if ($request->boolean('remove_image') && $product->image) {
                 $this->deleteImage($product->image);
                 $product->image = null;
@@ -124,7 +129,7 @@ class ProductController extends Controller
                 unset($data['image']);
             }
 
-            // Imagen nutricional
+            // Manejo de imagen nutricional
             if ($request->boolean('remove_img_nutrition') && $product->img_nutrition) {
                 $this->deleteImage($product->img_nutrition);
                 $product->img_nutrition = null;
@@ -139,19 +144,24 @@ class ProductController extends Controller
 
             $product->update($data);
 
-            // Sincronizar relaciones
+            // Sincronizar etiquetas
             if ($request->has('tag_ids')) {
                 $product->tags()->sync($request->input('tag_ids'));
             }
+
+            // Sincronizar empaques (muchos a muchos)
             if ($request->has('empaque_ids')) {
                 $product->empaques()->sync($request->input('empaque_ids'));
             }
+            // Sincronizar sellos (muchos a muchos)
             if ($request->has('octogon_ids')) {
                 $product->octogons()->sync($request->input('octogon_ids'));
             }
+            // Sincronizar Tamaños 
             if ($request->has('size_ids')) {
                 $product->sizes()->sync($request->input('size_ids'));
             }
+            // 👇 Sincronizar color-flavors CON ORDEN
             if ($request->has('color_flavor_ids')) {
                 $orderedIds = [];
                 foreach ($request->input('color_flavor_ids') as $index => $colorFlavorId) {
@@ -159,62 +169,74 @@ class ProductController extends Controller
                 }
                 $product->colorFlavors()->sync($orderedIds);
             }
+        //
+        // 🔥 GENERAR SKU automáticamente después de sincronizar colores y tamaños
+                $product->load(['colorFlavors', 'sizes']);
+                $this->syncSkus($product);
+        // Procesar  las variantes (ingredientes, octógonos, trazas)
+        if ($request->has('variants')) {
+            $variantsData = json_decode($request->input('variants'), true);
+            if (!is_array($variantsData)) {
+                // Si no es un array válido, puedes lanzar una excepción o simplemente ignorarlo
+                throw new \Exception('Formato de variantes inválido');
+            }
+            // Obtener todos los pivotes actuales del producto
+            $pivots = ColorFlavorProduct::where('product_id', $product->id)->get()->keyBy('color_flavor_id');
 
-            // Generar SKU después de sincronizar colores y tamaños
-            $product->load(['colorFlavors', 'sizes']);
-            $this->syncSkus($product);
-
-            // Procesar variantes (ingredientes, aptitudes, trazas)
-            if ($request->has('variants')) {
-                $variantsData = json_decode($request->input('variants'), true);
-                if (!is_array($variantsData)) {
-                    throw new \Exception('Formato de variantes inválido');
+            foreach ($variantsData as $variantData) {
+                $colorFlavorId = $variantData['color_flavor_id'] ?? null;
+                if (!$colorFlavorId || !isset($pivots[$colorFlavorId])) {
+                    continue; // Saltar si no existe el pivot
                 }
-                $pivots = ColorFlavorProduct::where('product_id', $product->id)->get()->keyBy('color_flavor_id');
+                $pivot = $pivots[$colorFlavorId];
 
-                foreach ($variantsData as $variantData) {
-                    $colorFlavorId = $variantData['color_flavor_id'] ?? null;
-                    if (!$colorFlavorId || !isset($pivots[$colorFlavorId])) {
-                        continue;
-                    }
-                    $pivot = $pivots[$colorFlavorId];
-
-                    if (isset($variantData['ingredient_ids']) && is_array($variantData['ingredient_ids'])) {
-                        $pivot->ingredients()->sync($variantData['ingredient_ids']);
-                    }
-                    if (isset($variantData['aptitude_ids']) && is_array($variantData['aptitude_ids'])) {
-                        $pivot->aptitudes()->sync($variantData['aptitude_ids']);
-                    }
-                    if (isset($variantData['trace_ids']) && is_array($variantData['trace_ids'])) {
-                        $pivot->traces()->sync($variantData['trace_ids']);
-                    }
+                // Sincronizar ingredientes
+                if (isset($variantData['ingredient_ids']) && is_array($variantData['ingredient_ids'])) {
+                    $pivot->ingredients()->sync($variantData['ingredient_ids']);
+                }
+                // Sincronizar octógonos
+                if (isset($variantData['aptitude_ids']) && is_array($variantData['aptitude_ids'])) {
+                    $pivot->aptitudes()->sync($variantData['aptitude_ids']);
+                }
+                // Sincronizar trazas
+                if (isset($variantData['trace_ids']) && is_array($variantData['trace_ids'])) {
+                    $pivot->traces()->sync($variantData['trace_ids']);
+                }
+            }
+        }
+                //
+                    return response()->json($this->format($product->fresh()));
+                } catch (\Exception $e) {
+                    return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
                 }
             }
 
-            return response()->json($this->format($product->fresh()));
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
+        public function destroy(Product $product)
+        {
+            try {
+                // Eliminar imágenes físicas
+                if ($product->image) $this->deleteImage($product->image);
+                if ($product->img_nutrition) $this->deleteImage($product->img_nutrition);
+
+                // Eliminar relaciones polimórficas (taggables)
+                $product->tags()->detach();
+
+                // Empaques: cascade ya las elimina, pero por claridad:
+                $product->empaques()->detach();
+                // Sellos: cascade ya las elimina, pero por claridad:
+                $product->octogons()->detach();
+                // Tamaños: cascade ya laselimina, pero por Claridad:
+                $product->sizes()->detach();
+                // Colores: cascade ya las elimina, pero por claridad:
+                $product->colorFlavors()->detach(); // 👈 Añadir esta línea
+                // Eliminar producto
+                $product->delete();
+
+                return response()->json(['message' => 'Producto eliminado correctamente']);
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
+            }
         }
-    }
-
-    public function destroy(Product $product)
-    {
-        try {
-            if ($product->image) $this->deleteImage($product->image);
-            if ($product->img_nutrition) $this->deleteImage($product->img_nutrition);
-
-            $product->tags()->detach();
-            $product->empaques()->detach();
-            $product->octogons()->detach();
-            $product->sizes()->detach();
-            $product->colorFlavors()->detach();
-            $product->delete();
-
-            return response()->json(['message' => 'Producto eliminado correctamente']);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
-        }
-    }
 
     public function reorder(Request $request)
     {
@@ -231,6 +253,7 @@ class ProductController extends Controller
                 return response()->json(['error' => 'Productos no encontrados'], 404);
             }
 
+            // Intercambiar los valores de 'order'
             $tempOrder = $source->order;
             $source->order = $target->order;
             $target->order = $tempOrder;
@@ -244,7 +267,7 @@ class ProductController extends Controller
         }
     }
 
-    private function syncSkus(Product $product): array
+ private function syncSkus(Product $product): array
     {
         $product->load(['brand', 'colorFlavors', 'sizes']);
 
@@ -321,12 +344,12 @@ class ProductController extends Controller
             'deleted_skus' => $deletedCount,
         ];
     }
+private function generateSkuCode(Product $product, string $colorCode, string $sizeCode): string
+{
+    $brandCode = $product->brand->code ?? '';
+    $productCode = $product->code ?? '';
+    $productId = $product->id;
+    return $brandCode . $productCode . $colorCode . $sizeCode . '_' . $productId;
 
-    private function generateSkuCode(Product $product, string $colorCode, string $sizeCode): string
-    {
-        $brandCode = $product->brand->code ?? '';
-        $productCode = $product->code ?? '';
-        $productId = $product->id;
-        return $brandCode . $productCode . $colorCode . $sizeCode . '_' . $productId;
-    }
+}
 }
