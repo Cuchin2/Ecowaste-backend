@@ -75,21 +75,19 @@ public function show(Product $product)
         'colorFlavors', 'sizes', 'skus'
     ]);
 
-    // Cargar relaciones del pivote
+    // Obtener el orden de colores desde la pivote (pivot.order)
+    $orderedColorIds = $product->colorFlavors->sortBy('pivot.order')->pluck('id')->values()->toArray();
+
+    // Ordenar SKU según la posición del color y luego por size_id (opcional)
+    $product->skus = $product->skus->sortBy(function ($sku) use ($orderedColorIds) {
+        $pos = array_search($sku->color_flavor_id, $orderedColorIds);
+        return [$pos !== false ? $pos : PHP_INT_MAX, $sku->size_id];
+    })->values();
+
+    // Cargar relaciones anidadas del pivote (ingredientes, etc.)
     $product->colorFlavors->each(function ($colorFlavor) {
         $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
     });
-
-    // Obtener el orden de colores desde la tabla pivote (clave: pivot.order)
-    $colorOrderMap = $product->colorFlavors->pluck('pivot.order', 'id')->toArray(); // [color_id => order]
-    asort($colorOrderMap); // ordenar por el valor 'order'
-    $orderedColorIds = array_keys($colorOrderMap); // IDs de colores en orden
-
-    // Ordenar SKU según el orden de colores y luego por size_id
-    $product->skus = $product->skus->sortBy(function ($sku) use ($orderedColorIds) {
-        $colorPos = array_search($sku->color_flavor_id, $orderedColorIds);
-        return [$colorPos !== false ? $colorPos : PHP_INT_MAX, $sku->size_id];
-    })->values();
 
     return response()->json($this->format($product));
 }
