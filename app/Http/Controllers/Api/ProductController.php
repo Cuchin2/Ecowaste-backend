@@ -308,7 +308,7 @@ private function syncSkus(Product $product): void
 
             // Asignar código por defecto si es nulo
             $colorCode = $colorFlavor?->code ?? 'COL_' . $combo['color_flavor_id'];
-            $sizeCode = $size?->codigo ?? 'SIZ_' . $combo['size_id'];
+            $sizeCode = $size?->code ?? 'SIZ_' . $combo['size_id'];
 
             $code = $this->generateSkuCode($product, $colorCode, $sizeCode, $empaqueCode);
             $toCreate[] = [

@@ -12,7 +12,7 @@ class Size extends Model
     protected $fillable = [
         'name',
         'tipo_unidad',
-        'codigo',
+        'code',
     ];
     public function products()
     {
