@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\TraceController;
 use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\OctogonController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ProductSkuController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -129,7 +130,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Productos
     Route::patch('products/reorder', [ProductController::class, 'reorder']);
     Route::apiResource('products', ProductController::class);
-    
+    // Sku
+    Route::apiResource('product-skus', ProductSkuController::class);
 });
 
 Route::post('/register', [RegisterController::class, 'register']);

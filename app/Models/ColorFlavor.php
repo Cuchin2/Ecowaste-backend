@@ -26,4 +26,8 @@ class ColorFlavor extends Model
         return $this->belongsToMany(Product::class, 'color_flavor_product')
                     ->withPivot('order');
     }
+    public function skus()
+    {
+        return $this->hasMany(ProductSku::class);
+    }
 }

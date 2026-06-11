@@ -62,7 +62,10 @@ class Product extends Model
                     ->withPivot('id', 'order')           // incluir id y order del pivot
                     ->orderBy('pivot_order');            // mantener ordenación
     }
-
+    public function skus()
+    {
+        return $this->hasMany(ProductSku::class);
+    }
     // Auto-generar slug y code
     protected static function boot()
     {

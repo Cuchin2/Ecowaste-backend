@@ -23,4 +23,8 @@ class Empaque extends Model
     {
         return $this->belongsToMany(Product::class, 'empaque_product');
     }
+    public function skus()
+    {
+        return $this->hasMany(ProductSku::class);
+    }
 }

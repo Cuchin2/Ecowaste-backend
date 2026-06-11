@@ -18,4 +18,8 @@ class Size extends Model
     {
         return $this->belongsToMany(Product::class, 'product_size');
     }
+    public function skus()
+    {
+        return $this->hasMany(ProductSku::class);
+    }
 }
