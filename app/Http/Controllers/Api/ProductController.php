@@ -68,33 +68,31 @@ class ProductController extends Controller
         }
     }
 
-    public function show(Product $product)
-    {
-        // Cargar relaciones directas del producto
-        $product->load([
-            'category',
-            'brand',
-            'tags',
-            'empaques',
-            'octogons',
-            'colorFlavors',
-            'sizes',
-            'skus',               // 👈 Cargar también los SKU
-        ]);
+public function show(Product $product)
+{
+    $product->load([
+        'category', 'brand', 'tags', 'empaques', 'octogons',
+        'colorFlavors', 'sizes', 'skus'
+    ]);
 
-        // Cargar las relaciones del pivote para cada color/sabor
-        $product->colorFlavors->each(function ($colorFlavor) {
-            $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
-        });
+    // Cargar relaciones del pivote
+    $product->colorFlavors->each(function ($colorFlavor) {
+        $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
+    });
 
-        // Ordenar los SKU según el orden de los colores
-        $colorOrder = $product->colorFlavors->pluck('order')->toArray();
-        $product->skus = $product->skus->sortBy(function ($sku) use ($colorOrder) {
-            return array_search($sku->color_flavor_id, $colorOrder);
-        })->values();
+    // Obtener el orden de colores desde la tabla pivote (clave: pivot.order)
+    $colorOrderMap = $product->colorFlavors->pluck('pivot.order', 'id')->toArray(); // [color_id => order]
+    asort($colorOrderMap); // ordenar por el valor 'order'
+    $orderedColorIds = array_keys($colorOrderMap); // IDs de colores en orden
 
-        return response()->json($this->format($product));
-    }
+    // Ordenar SKU según el orden de colores y luego por size_id
+    $product->skus = $product->skus->sortBy(function ($sku) use ($orderedColorIds) {
+        $colorPos = array_search($sku->color_flavor_id, $orderedColorIds);
+        return [$colorPos !== false ? $colorPos : PHP_INT_MAX, $sku->size_id];
+    })->values();
+
+    return response()->json($this->format($product));
+}
 
     public function update(Request $request, Product $product)
     {
