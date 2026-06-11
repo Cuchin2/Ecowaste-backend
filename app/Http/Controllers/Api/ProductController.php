@@ -305,7 +305,7 @@ private function syncSkus(Product $product): void
             // Necesitamos obtener los códigos individuales
             $colorFlavor = ColorFlavor::find($combo['color_flavor_id']);
             $size = Size::find($combo['size_id']);
-            $code = $this->generateSkuCode($brandCode, $productCode, $colorFlavor->code, $size->code);
+            $code = $this->generateSkuCode($product, $colorFlavor->code, $size->code);
             $newCombinations[] = [
                 'product_id' => $product->id,
                 'color_flavor_id' => $combo['color_flavor_id'],
@@ -327,8 +327,11 @@ private function syncSkus(Product $product): void
         $product->skus()->createMany($newCombinations);
     }
 }
-private function generateSkuCode(?string $brandCode, ?string $productCode, ?string $colorCode, ?string $sizeCode): string
+private function generateSkuCode(Product $product, string $colorCode, string $sizeCode): string
 {
-    return ($brandCode ?? '') . ($productCode ?? '') . ($colorCode ?? '') . ($sizeCode ?? '');
+    $brandCode = $product->brand->code ?? '';
+    $productCode = $product->code ?? '';
+    $productId = $product->id;
+    return $brandCode . $productCode . $colorCode . $sizeCode . '_' . $productId;
 }
 }
