@@ -335,11 +335,13 @@ private function syncSkus(Product $product): void
             $sizeCode = $size?->code ?? 'SIZ_' . $combo['size_id'];
 
             $code = $this->generateSkuCode($product, $colorCode, $sizeCode, $empaqueCode);
+            $name = $this->generateSkuName($product, $colorFlavor, $size);
             $toCreate[] = [
                 'product_id' => $product->id,
                 'color_flavor_id' => $combo['color_flavor_id'],
                 'size_id' => $combo['size_id'],
                 'code' => $code,
+                'name' => $name,
                 'sell_price' => 0,
                 'stock' => 0,
                 'offer' => false,
@@ -366,5 +368,9 @@ private function generateSkuCode(Product $product, string $colorCode, string $si
     $productCode = $product->code ?? '';
     // Ejemplo: "EW0001" + "RD" + "B" + "XL" + "_9" = "EW0001RDBXL_9"
     return $brandCode . $productCode . $colorCode . $empaqueCode . $sizeCode;
+}
+private function generateSkuName(Product $product, ColorFlavor $colorFlavor, Size $size): string
+{
+    return $product->name . ' ' . $size->name . ' ' . $colorFlavor->name;
 }
 }
