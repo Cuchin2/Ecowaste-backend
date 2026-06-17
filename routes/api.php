@@ -131,7 +131,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('products/reorder', [ProductController::class, 'reorder']);
     Route::apiResource('products', ProductController::class);
     // Sku
-    Route::apiResource('product-skus', ProductSkuController::class);
+    Route::prefix('products')->group(function () {
+        Route::put('/{product}/skus/{sku}', [ProductSkuController::class, 'update']);
+        Route::delete('/{product}/skus/{sku}', [ProductSkuController::class, 'destroy']);
+    });
 });
 
 Route::post('/register', [RegisterController::class, 'register']);
