@@ -18,36 +18,27 @@ class ProductSkuController extends Controller
      * @param  \App\Models\Sku           $sku
      * @return \Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, Product $product, Sku $sku)
-    {
-        // Verificar que el SKU pertenece al producto
-        if ($sku->product_id !== $product->id) {
-            return response()->json(['error' => 'El SKU no pertenece a este producto'], 404);
-        }
-
-        // Validar los campos permitidos (solo lo que el frontend puede modificar)
-        $validated = $request->validate([
-            'name'        => 'sometimes|string|max:255',
-            'sell_price'  => 'sometimes|numeric|min:0',
-            'stock'       => 'sometimes|integer|min:0',
-            'offer'       => 'sometimes|boolean',
-            // Nota: color_flavor_id, size_id, empaque_id, code no se actualizan aquí
-            // porque se gestionan a nivel de producto (syncSkus)
-        ]);
-
-        try {
-            $sku->update($validated);
-
-            return response()->json([
-                'message' => 'SKU actualizado correctamente',
-                'sku'     => $sku->fresh()
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Error al actualizar SKU: ' . $e->getMessage()
-            ], 500);
-        }
+public function update(Request $request, $productId, Sku $sku)
+{
+    // Buscar el producto por ID
+    $product = Product::findOrFail($productId);
+    
+    // Verificar que el SKU pertenece a este producto
+    if ($sku->product_id !== $product->id) {
+        return response()->json(['error' => 'El SKU no pertenece a este producto'], 404);
     }
+
+    // Validar
+    $validated = $request->validate([
+        'name'        => 'sometimes|string|max:255',
+        'sell_price'  => 'sometimes|numeric|min:0',
+        'stock'       => 'sometimes|integer|min:0',
+        'offer'       => 'sometimes|boolean',
+    ]);
+
+    $sku->update($validated);
+    return response()->json(['message' => 'SKU actualizado correctamente', 'sku' => $sku->fresh()]);
+}
 
     /**
      * Eliminar un SKU específico (opcional, si se necesita).
