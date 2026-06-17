@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Sku;
+use App\Models\ProductSku;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,10 +15,10 @@ class ProductSkuController extends Controller
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \App\Models\Product       $product
-     * @param  \App\Models\Sku           $sku
+     * @param  \App\Models\ProductSku           $sku
      * @return \Illuminate\Http\JsonResponse
      */
-public function update(Request $request, $productId, Sku $sku)
+public function update(Request $request, $productId, ProductSku $sku)
 {
     // Buscar el producto por ID
     $product = Product::findOrFail($productId);
@@ -43,7 +43,7 @@ public function update(Request $request, $productId, Sku $sku)
     /**
      * Eliminar un SKU específico (opcional, si se necesita).
      */
-    public function destroy(Product $product, Sku $sku)
+    public function destroy(Product $product, ProductSku $sku)
     {
         if ($sku->product_id !== $product->id) {
             return response()->json(['error' => 'El SKU no pertenece a este producto'], 404);
