@@ -353,6 +353,7 @@ private function syncSkus(Product $product): void
                 'product_id' => $product->id,
                 'color_flavor_id' => $combo['color_flavor_id'],
                 'size_id' => $combo['size_id'],
+                'empaque_id' => $combo['empaque_id'],
                 'code' => $code,
                 'name' => $name,
                 'sell_price' => 0,
