@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\TagController;
 use App\Http\Controllers\Api\OctogonController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductSkuController;
+use App\Http\Controllers\Api\ProductSkuImageController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
