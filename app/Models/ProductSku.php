@@ -51,4 +51,10 @@ class ProductSku extends Model
     {
         return $this->belongsTo(Empaque::class);
     }
+    public function images()
+    {
+        return $this->belongsToMany(Image::class, 'product_sku_images')
+                    ->withPivot('order')
+                    ->orderBy('pivot_order');
+    }
 }

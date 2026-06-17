@@ -135,6 +135,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{product}/skus/{sku}', [ProductSkuController::class, 'update']);
         Route::delete('/{product}/skus/{sku}', [ProductSkuController::class, 'destroy']);
     });
+    Route::prefix('products/skus')->group(function () {
+        Route::get('{sku}/images', [ProductSkuImageController::class, 'index']);
+        Route::post('{sku}/images', [ProductSkuImageController::class, 'store']);
+        Route::put('{sku}/images/reorder', [ProductSkuImageController::class, 'updateOrder']);
+        Route::delete('{sku}/images/{image}', [ProductSkuImageController::class, 'destroy']);
+    });
 });
 
 Route::post('/register', [RegisterController::class, 'register']);

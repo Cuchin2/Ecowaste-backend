@@ -72,7 +72,7 @@ public function show(Product $product)
 {
     $product->load([
         'category', 'brand', 'tags', 'empaques', 'octogons',
-        'colorFlavors', 'sizes', 'skus'
+        'colorFlavors', 'sizes', 'skus','skus.images'
     ]);
 
     // Obtener los IDs de los colores en el orden que ya tiene la relación (gracias a orderBy('pivot_order'))
