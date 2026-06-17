@@ -11,10 +11,10 @@ class Image extends Model
 
     protected $fillable = ['path', 'alt'];
 
-    public function productSkus()
-    {
-        return $this->belongsToMany(ProductSku::class, 'product_sku_images')
-                    ->withPivot('order')
-                    ->orderBy('pivot_order');
-    }
+public function productSkus()
+{
+    return $this->belongsToMany(ProductSku::class, 'product_sku_images')
+                ->withPivot('order')
+                ->orderBy('order'); // ✅
+}
 }

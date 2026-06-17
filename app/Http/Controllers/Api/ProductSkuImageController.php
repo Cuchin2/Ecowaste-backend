@@ -34,7 +34,7 @@ class ProductSkuImageController extends Controller
         ]);
 
         $uploaded = [];
-        $currentOrder = $sku->images()->max('pivot_order') ?? 0;
+        $currentOrder = $sku->images()->max('order') ?? 0;
 
         foreach ($request->file('images') as $index => $file) {
             // Usar el trait para subir la imagen

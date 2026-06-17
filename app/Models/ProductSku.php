@@ -55,6 +55,6 @@ class ProductSku extends Model
     {
         return $this->belongsToMany(Image::class, 'product_sku_images')
                     ->withPivot('order')
-                    ->orderBy('pivot_order');
+                    ->orderBy('order'); // ✅
     }
 }
