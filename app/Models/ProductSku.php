@@ -22,6 +22,7 @@ class ProductSku extends Model
         'stock',
         'offer',
         'offer_price',
+        'semaphore', // 👈 nuevo
     ];
 
     protected $casts = [
@@ -29,6 +30,7 @@ class ProductSku extends Model
         'offer_price' => 'decimal:2',
         'offer' => 'boolean',
         'stock' => 'integer',
+        'semaphore' => 'boolean', // 👈 nuevo
     ];
 
     // Relaciones

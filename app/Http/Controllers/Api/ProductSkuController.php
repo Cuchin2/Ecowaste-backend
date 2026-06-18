@@ -35,6 +35,7 @@ public function update(Request $request, $productId, ProductSku $sku)
         'stock'       => 'sometimes|integer|min:0',
         'offer'       => 'sometimes|boolean',
         'offer_price' => 'nullable|numeric|min:0', // 👈 agregar
+        'semaphore'   => 'sometimes|boolean', // 👈 nuevo
     ]);
 
     $sku->update($validated);
