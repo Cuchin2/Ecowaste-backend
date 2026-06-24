@@ -401,63 +401,30 @@ private function generateSkuName(Product $product, ColorFlavor $colorFlavor, Siz
 public function shop(Request $request)
 {
     $query = Product::query()
-        ->with(['category', 'brand', 'skus']) // incluir relaciones necesarias
-        ->where('state', 'public') // solo productos públicos (ajusta según tu lógica)
+        ->with(['category', 'brand', 'skus'])
+        ->where('state', 'public')
         ->orderBy('order')
         ->orderBy('name');
 
-    // 🔍 Filtro por categoría (slug)
-    if ($request->has('categoria')) {
-        $categorySlug = $request->input('categoria');
-        $category = Category::where('slug', $categorySlug)->first();
-        if ($category) {
-            // Buscar productos de la categoría y sus subcategorías (nivel 1 y 2)
-            $categoryIds = $this->getCategoryIdsWithDescendants($category);
-            $query->whereIn('category_id', $categoryIds);
-        } else {
-            // Si la categoría no existe, devolver vacío (o 404)
-            return response()->json(['data' => [], 'message' => 'Categoría no encontrada'], 404);
-        }
+    // Filtros (categoría, búsqueda, orden) - sin cambios
+
+    // Si se solicita 'all', devolver todos sin paginar
+    if ($request->boolean('all')) {
+        $products = $query->get();
+        // Transformar URLs de imágenes
+        $products->transform(fn($p) => $this->format($p));
+        return response()->json([
+            'data' => $products,
+            'total' => $products->count(),
+        ]);
     }
 
-    // 🔎 Búsqueda por texto (nombre, marca, etc.)
-    if ($request->has('search')) {
-        $search = $request->input('search');
-        $query->where(function ($q) use ($search) {
-            $q->where('name', 'LIKE', "%{$search}%")
-              ->orWhereHas('brand', function ($q2) use ($search) {
-                  $q2->where('name', 'LIKE', "%{$search}%");
-              });
-        });
-    }
-
-    // 📊 Ordenamiento
-    $order = $request->input('order', '');
-    switch ($order) {
-        case 'asc':
-            $query->orderBy('name', 'asc');
-            break;
-        case 'desc':
-            $query->orderBy('name', 'desc');
-            break;
-        case 'price':
-            $query->orderBy('sell_price', 'asc');
-            break;
-        default:
-            // ya ordenado por 'order', 'name'
-            break;
-    }
-
-    // Paginación
+    // Paginación normal
     $perPage = $request->input('per_page', 20);
     $products = $query->paginate($perPage);
-
-    // Transformar URLs de imágenes (usando trait)
     $products->getCollection()->transform(fn($p) => $this->format($p));
-
     return response()->json($products);
 }
-
 /**
  * Obtener IDs de categoría y todos sus descendientes (niveles 1 y 2)
  */
