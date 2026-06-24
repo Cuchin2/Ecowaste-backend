@@ -402,28 +402,63 @@ public function shop(Request $request)
 {
     $query = Product::query()
         ->with(['category', 'brand', 'skus'])
-        ->where('state', 'public')
+        ->where('state', 'public') // solo productos públicos
         ->orderBy('order')
         ->orderBy('name');
 
-    // Filtros (categoría, búsqueda, orden) - sin cambios
-
-    // Si se solicita 'all', devolver todos sin paginar
-    if ($request->boolean('all')) {
-        $products = $query->get();
-        // Transformar URLs de imágenes
-        $products->transform(fn($p) => $this->format($p));
-        return response()->json([
-            'data' => $products,
-            'total' => $products->count(),
-        ]);
+    // 🔍 Filtro por categoría (slug) - incluye subcategorías hasta nivel 2
+    if ($request->has('categoria')) {
+        $categorySlug = $request->input('categoria');
+        $category = Category::where('slug', $categorySlug)->first();
+        if ($category) {
+            $categoryIds = $this->getCategoryIdsWithDescendants($category);
+            $query->whereIn('category_id', $categoryIds);
+        } else {
+            // Si la categoría no existe, devolver vacío
+            return response()->json([
+                'data' => [],
+                'total' => 0,
+                'message' => 'Categoría no encontrada',
+            ], 404);
+        }
     }
 
-    // Paginación normal
-    $perPage = $request->input('per_page', 20);
-    $products = $query->paginate($perPage);
-    $products->getCollection()->transform(fn($p) => $this->format($p));
-    return response()->json($products);
+    // 🔎 Búsqueda por texto (nombre del producto o marca)
+    if ($request->has('search')) {
+        $search = $request->input('search');
+        $query->where(function ($q) use ($search) {
+            $q->where('name', 'LIKE', "%{$search}%")
+              ->orWhereHas('brand', function ($q2) use ($search) {
+                  $q2->where('name', 'LIKE', "%{$search}%");
+              });
+        });
+    }
+
+    // 📊 Ordenamiento
+    $order = $request->input('order', '');
+    switch ($order) {
+        case 'asc':
+            $query->orderBy('name', 'asc');
+            break;
+        case 'desc':
+            $query->orderBy('name', 'desc');
+            break;
+        case 'price':
+            $query->orderBy('sell_price', 'asc');
+            break;
+        default:
+            // ya ordenado por 'order', 'name' al inicio
+            break;
+    }
+
+    // 🚀 Devuelve TODOS los productos (sin paginación)
+    $products = $query->get();
+    $products->transform(fn($p) => $this->format($p));
+
+    return response()->json([
+        'data' => $products,
+        'total' => $products->count(),
+    ]);
 }
 /**
  * Obtener IDs de categoría y todos sus descendientes (niveles 1 y 2)
