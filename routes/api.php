@@ -144,7 +144,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-Route::get('/shop', [ProductController::class, 'shop'])->name('api.products.shop');
+Route::get('/shop', [ProductController::class, 'shop']);
 Route::post('/register', [RegisterController::class, 'register']);
 Route::get('/categoriespublic', [CategoryController::class, 'publicIndex']);
 Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
