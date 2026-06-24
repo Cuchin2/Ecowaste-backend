@@ -401,7 +401,7 @@ private function generateSkuName(Product $product, ColorFlavor $colorFlavor, Siz
 public function shop(Request $request)
 {
     $query = Product::query()
-        ->with(['category', 'brand', 'images', 'skus']) // incluir relaciones necesarias
+        ->with(['category', 'brand', 'skus']) // incluir relaciones necesarias
         ->where('state', 'public') // solo productos públicos (ajusta según tu lógica)
         ->orderBy('order')
         ->orderBy('name');
