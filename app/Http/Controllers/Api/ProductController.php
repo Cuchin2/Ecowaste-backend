@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\Category;
 use App\Models\ColorFlavor;
 use App\Models\Size;
 use App\Traits\UploadsImages;
