@@ -133,7 +133,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('products', ProductController::class);
     // Sku
     Route::prefix('products')->group(function () {
-        Route::get('/shop', [ProductController::class, 'shop'])->name('api.products.shop');
         Route::put('/{product}/skus/{sku}', [ProductSkuController::class, 'update']);
         Route::delete('/{product}/skus/{sku}', [ProductSkuController::class, 'destroy']);
     });
@@ -145,6 +144,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+Route::get('/shop', [ProductController::class, 'shop'])->name('api.products.shop');
 Route::post('/register', [RegisterController::class, 'register']);
 Route::get('/categoriespublic', [CategoryController::class, 'publicIndex']);
 Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
