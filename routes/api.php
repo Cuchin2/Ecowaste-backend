@@ -130,7 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('octogons', OctogonController::class);
     // Productos
     Route::patch('products/reorder', [ProductController::class, 'reorder']);
-    Route::apiResource('products', ProductController::class);
+    Route::apiResource('products', ProductController::class)->except(['show']);
     // Sku
     Route::prefix('products')->group(function () {
         Route::put('/{product}/skus/{sku}', [ProductSkuController::class, 'update']);
@@ -143,7 +143,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('{sku}/images/{image}', [ProductSkuImageController::class, 'destroy']);
     });
 });
-
+// Rutas públicas
+Route::get('/products/{product}', [ProductController::class, 'show']);
 Route::get('/shop', [ProductController::class, 'shop']);
 Route::post('/register', [RegisterController::class, 'register']);
 Route::get('/categoriespublic', [CategoryController::class, 'publicIndex']);
