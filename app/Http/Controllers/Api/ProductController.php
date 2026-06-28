@@ -391,7 +391,7 @@ private function generateSkuCode(Product $product, string $colorCode, string $si
 }
 private function generateSkuName(Product $product, ColorFlavor $colorFlavor, Size $size,?Empaque $empaque = null): string
 {
-    return $product->name . ' ' . $size->name . ' ' . $colorFlavor->name . ' en ' - $empaque->name;
+    return $product->name . ' ' . $size->name . ' ' . $colorFlavor->name . ' en ' . $empaque->name;
 }
 
 /* Por Categoría para tienda SHOP */
