@@ -298,71 +298,66 @@ private function syncSkus(Product $product): void
 
     $colorFlavorIds = $product->colorFlavors->pluck('id')->toArray();
     $sizeIds = $product->sizes->pluck('id')->toArray();
-    
-    // Obtener el primer empaque (si existe)
-    $firstEmpaque = $product->empaques->first();
-    $empaqueId = $firstEmpaque?->id;
-    $empaqueCode = $firstEmpaque?->code ?? '';
+    $empaqueIds = $product->empaques->pluck('id')->toArray();
 
+    // Si no hay colores o tamaños, eliminar todos los SKU
     if (empty($colorFlavorIds) || empty($sizeIds)) {
         $product->skus()->delete();
         return;
     }
 
+    // Si no hay empaques, generamos SKU sin empaque (empaque_id = null)
+    if (empty($empaqueIds)) {
+        $empaqueIds = [null];
+    }
+
     $brandCode = $product->brand->code ?? '';
     $productCode = $product->code ?? '';
 
-    // Combinaciones esperadas
+    // Obtener todos los objetos de empaque (para código y nombre)
+    $empaquesMap = $product->empaques->keyBy('id');
+
+    // Generar todas las combinaciones: color × size × empaque
     $combinations = [];
     foreach ($colorFlavorIds as $cfId) {
         foreach ($sizeIds as $sId) {
-            $combinations[] = [
-                'color_flavor_id' => $cfId,
-                'size_id' => $sId,
-                'empaque_id' => $empaqueId, // 👈 se asigna el mismo para todos
-                'key' => $cfId . '_' . $sId,
-            ];
-        }
-    }
-
-    // SKU existentes indexados por clave
-    $existingSkus = $product->skus->keyBy(function ($sku) {
-        return $sku->color_flavor_id . '_' . $sku->size_id;
-    });
-
-    // ACTUALIZAR SKU existentes (nombre)
-    foreach ($existingSkus as $key => $sku) {
-        $colorFlavor = $product->colorFlavors->firstWhere('id', $sku->color_flavor_id);
-        $size = $product->sizes->firstWhere('id', $sku->size_id);
-        if ($colorFlavor && $size) {
-            $newName = $this->generateSkuName($product, $colorFlavor, $size);
-            if ($sku->name !== $newName) {
-                $sku->name = $newName;
-                $sku->save();
+            foreach ($empaqueIds as $eId) {
+                $key = $cfId . '_' . $sId . '_' . ($eId ?? 'null');
+                $combinations[] = [
+                    'color_flavor_id' => $cfId,
+                    'size_id' => $sId,
+                    'empaque_id' => $eId,
+                    'key' => $key,
+                ];
             }
         }
-        // Opcional: actualizar empaque_id si cambió (no lo hacemos para mantener consistencia)
     }
 
-    // CREAR nuevos SKU
+    // Obtener SKU existentes indexados por clave compuesta (incluyendo empaque)
+    $existingSkus = $product->skus->keyBy(function ($sku) {
+        return $sku->color_flavor_id . '_' . $sku->size_id . '_' . ($sku->empaque_id ?? 'null');
+    });
+
     $toCreate = [];
     foreach ($combinations as $combo) {
         $key = $combo['key'];
         if (!isset($existingSkus[$key])) {
             $colorFlavor = ColorFlavor::find($combo['color_flavor_id']);
             $size = Size::find($combo['size_id']);
+            $empaque = $combo['empaque_id'] ? $empaquesMap[$combo['empaque_id']] ?? null : null;
+
             $colorCode = $colorFlavor?->code ?? 'COL_' . $combo['color_flavor_id'];
             $sizeCode = $size?->code ?? 'SIZ_' . $combo['size_id'];
+            $empaqueCode = $empaque?->code ?? '';
 
-            // Generar código con el empaque correspondiente
             $code = $this->generateSkuCode($product, $colorCode, $sizeCode, $empaqueCode);
-            $name = $this->generateSkuName($product, $colorFlavor, $size);
+            $name = $this->generateSkuName($product, $colorFlavor, $size, $empaque);
 
             $toCreate[] = [
                 'product_id' => $product->id,
                 'color_flavor_id' => $combo['color_flavor_id'],
                 'size_id' => $combo['size_id'],
-                'empaque_id' => $combo['empaque_id'], // 👈 se guarda el ID
+                'empaque_id' => $combo['empaque_id'],
                 'code' => $code,
                 'name' => $name,
                 'sell_price' => 0,
@@ -372,17 +367,18 @@ private function syncSkus(Product $product): void
         }
     }
 
-    if (!empty($toCreate)) {
-        $product->skus()->createMany($toCreate);
-    }
-
-    // ELIMINAR SKU obsoletos
+    // Eliminar SKU obsoletos (los que ya no están en las combinaciones actuales)
     $keysToKeep = collect($combinations)->pluck('key')->toArray();
     foreach ($product->skus as $sku) {
-        $key = $sku->color_flavor_id . '_' . $sku->size_id;
+        $key = $sku->color_flavor_id . '_' . $sku->size_id . '_' . ($sku->empaque_id ?? 'null');
         if (!in_array($key, $keysToKeep)) {
             $sku->delete();
         }
+    }
+
+    // Crear los nuevos SKU
+    if (!empty($toCreate)) {
+        $product->skus()->createMany($toCreate);
     }
 }
 private function generateSkuCode(Product $product, string $colorCode, string $sizeCode, string $empaqueCode): string
@@ -392,9 +388,9 @@ private function generateSkuCode(Product $product, string $colorCode, string $si
     // Ejemplo: "EW0001" + "RD" + "B" + "XL" + "_9" = "EW0001RDBXL_9"
     return $brandCode . $productCode . $colorCode . $empaqueCode . $sizeCode;
 }
-private function generateSkuName(Product $product, ColorFlavor $colorFlavor, Size $size): string
+private function generateSkuName(Product $product, ColorFlavor $colorFlavor, Size $size,?Empaque $empaque = null): string
 {
-    return $product->name . ' ' . $size->name . ' ' . $colorFlavor->name;
+    return $product->name . ' ' . $size->name . ' ' . $colorFlavor->name . ' en ' - $empaque->name;
 }
 
 /* Por Categoría para tienda SHOP */
