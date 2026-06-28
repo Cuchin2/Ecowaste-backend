@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\ColorFlavor;
 use App\Models\Size;
+use App\Models\Empaque;
 use App\Traits\UploadsImages;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
