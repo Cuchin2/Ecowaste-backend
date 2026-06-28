@@ -19,8 +19,8 @@ class ProductSkuController extends Controller
      * @return \Illuminate\Http\JsonResponse
      */
 
-    public function show(Product $product)
-    {
+public function show(Product $product)
+{
     $product->load([
         'category',
         'brand',
@@ -30,35 +30,32 @@ class ProductSkuController extends Controller
         'colorFlavors',
         'sizes',
         'skus' => function ($query) {
-            $query->where('semaphore', true); // 👈 filtro para solo SKU activos
+            $query->where('semaphore', true);
         },
-        'skus.images' // las imágenes se cargan solo para los SKU filtrados
+        'skus.images'
     ]);
 
-        // Obtener los IDs de los colores en el orden que ya tiene la relación (gracias a orderBy('pivot_order'))
-        $orderedColorIds = $product->colorFlavors->pluck('id')->toArray();
+    // Ordenar SKU
+    $orderedColorIds = $product->colorFlavors->pluck('id')->toArray();
+    $positionMap = array_flip($orderedColorIds);
 
-        // Mapa de posición para orden rápido
-        $positionMap = array_flip($orderedColorIds);
+    $sortedSkus = $product->skus->sortBy(function ($sku) use ($positionMap) {
+        return [
+            $positionMap[$sku->color_flavor_id] ?? PHP_INT_MAX,
+            $sku->size_id
+        ];
+    })->values();
 
-        // Ordenar los SKU según el orden de colores y luego por size_id
-        $sortedSkus = $product->skus->sortBy(function ($sku) use ($positionMap) {
-            return [
-                $positionMap[$sku->color_flavor_id] ?? PHP_INT_MAX,
-                $sku->size_id
-            ];
-        })->values();
+    $product->setRelation('skus', $sortedSkus);
 
-        // Reemplazar la relación skus con la colección ordenada
-        $product->setRelation('skus', $sortedSkus);
+    // Cargar relaciones anidadas del pivote
+    $product->colorFlavors->each(function ($colorFlavor) {
+        $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
+    });
 
-        // Cargar relaciones anidadas del pivote
-        $product->colorFlavors->each(function ($colorFlavor) {
-            $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
-        });
-
-        return response()->json($this->format($product));
-        }
+    // ✅ Devuelve el producto sin formatear
+    return response()->json($product);
+}
 public function update(Request $request, $productId, ProductSku $sku)
 {
     // Buscar el producto por ID
