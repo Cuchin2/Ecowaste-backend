@@ -113,16 +113,16 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('specials/reorder', [SpecialController::class, 'reorder']);
     Route::apiResource('specials', SpecialController::class);
     // Ingredientes
-    Route::apiResource('ingredients', IngredientController::class);
+    Route::apiResource('ingredients', IngredientController::class)->except('index');
     // Aptitudes
     Route::patch('aptitudes/reorder', [AptitudeController::class, 'reorder']);
-    Route::apiResource('aptitudes', AptitudeController::class);
+    Route::apiResource('aptitudes', AptitudeController::class)->except('index');
     // Dieta
     Route::patch('diets/reorder', [DietController::class, 'reorder']);
     Route::apiResource('diets', DietController::class);
     // Trazas
     Route::get('traces/tipos', [TraceController::class, 'tipos']);
-    Route::apiResource('traces', TraceController::class);
+    Route::apiResource('traces', TraceController::class)->except('index');
     // Tags
     Route::apiResource('tags', TagController::class);
     // Octogonos o Sellos
@@ -149,6 +149,9 @@ Route::get('/shop', [ProductController::class, 'shop']);
 Route::post('/register', [RegisterController::class, 'register']);
 Route::get('/categoriespublic', [CategoryController::class, 'publicIndex']);
 Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
+Route::get('traces', [TraceController::class, 'index']);
+Route::get('aptitudes', [AptitudeController::class, 'index']);
+Route::get('ingredients', [IngredientController::class, 'index']);
 /* Route::get('/pruebas/backend', [PruebaController::class, 'index']); */
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
