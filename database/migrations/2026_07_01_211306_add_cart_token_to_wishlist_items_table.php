@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('wishlist_items', function (Blueprint $table) {
-            $table->string('cart_token')->nullable()->after('id');
+            $table->dropColumn('session_id');
         });
     }
 
