@@ -12,11 +12,11 @@ class CartController extends Controller
 public function index(Request $request)
 {
     $cart = $this->getCart($request);
-    // Cargar items con sus SKU y las imágenes de cada SKU
-    $cart->load(['items.sku.images']); // 👈 así cargas las imágenes
+    $cart->load('items.sku.images');
 
     return response()->json([
         'cart' => $cart,
+        'cart_token' => $cart->cart_token, // 👈 enviar al frontend
     ]);
 }
 
@@ -84,7 +84,17 @@ public function index(Request $request)
         if ($user) {
             return Cart::firstOrCreate(['user_id' => $user->id]);
         }
-        $sessionId = $request->session()->getId();
-        return Cart::firstOrCreate(['session_id' => $sessionId]);
+
+        // Buscar por token en header
+        $cartToken = $request->header('X-Cart-Token');
+        if ($cartToken) {
+            $cart = Cart::where('cart_token', $cartToken)->first();
+            if ($cart) {
+                return $cart;
+            }
+        }
+
+        // Crear nuevo carrito (el modelo generará cart_token automáticamente)
+        return Cart::create();
     }
 }
