@@ -27,6 +27,8 @@ use App\Http\Controllers\Api\OctogonController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductSkuController;
 use App\Http\Controllers\Api\ProductSkuImageController;
+use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\WishlistController;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -156,3 +158,17 @@ Route::get('ingredients', [IngredientController::class, 'index']);
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
 }); */
+Route::prefix('cart')->group(function () {
+    Route::get('/', [CartController::class, 'index']);
+    Route::post('/items', [CartController::class, 'addItem']);
+    Route::patch('/items/{itemId}', [CartController::class, 'updateItem']);
+    Route::delete('/items/{itemId}', [CartController::class, 'removeItem']);
+    Route::delete('/clear', [CartController::class, 'clear']);
+});
+
+Route::prefix('wishlist')->group(function () {
+    Route::get('/', [WishlistController::class, 'index']);
+    Route::post('/', [WishlistController::class, 'add']);
+    Route::delete('/{skuId}', [WishlistController::class, 'remove']);
+    Route::post('/{skuId}/move-to-cart', [WishlistController::class, 'moveToCart']);
+});
