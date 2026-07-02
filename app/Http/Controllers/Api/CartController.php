@@ -81,12 +81,31 @@ public function index(Request $request)
     private function getCart(Request $request)
     {
         $user = Auth::user();
+        $cartToken = $request->header('X-Cart-Token');
+
         if ($user) {
-            return Cart::firstOrCreate(['user_id' => $user->id]);
+            // Buscar carrito por user_id
+            $cart = Cart::where('user_id', $user->id)->first();
+            if ($cart) {
+                return $cart;
+            }
+
+            // Si no tiene carrito, verificar si tiene un carrito de invitado con el token
+            if ($cartToken) {
+                $guestCart = Cart::where('cart_token', $cartToken)->first();
+                if ($guestCart) {
+                    // Asignar el carrito invitado al usuario
+                    $guestCart->user_id = $user->id;
+                    $guestCart->save();
+                    return $guestCart;
+                }
+            }
+
+            // Crear nuevo carrito para el usuario
+            return Cart::create(['user_id' => $user->id]);
         }
 
-        // Buscar por token en header
-        $cartToken = $request->header('X-Cart-Token');
+        // Invitado: buscar por token o crear uno nuevo
         if ($cartToken) {
             $cart = Cart::where('cart_token', $cartToken)->first();
             if ($cart) {
@@ -94,7 +113,6 @@ public function index(Request $request)
             }
         }
 
-        // Crear nuevo carrito (el modelo generará cart_token automáticamente)
         return Cart::create();
     }
 }
