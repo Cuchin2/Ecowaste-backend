@@ -9,15 +9,16 @@ class WishlistItem extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'cart_token', 'product_sku_id'];
+    protected $fillable = ['user_id', 'product_sku_id'];
 
-    public function user()
-    {
+    public function user() 
+    { 
         return $this->belongsTo(User::class);
     }
 
-    public function sku()
-    {
-        return $this->belongsTo(ProductSku::class, 'product_sku_id');
-    }
+    public function sku() 
+    { 
+        return $this->belongsTo(ProductSku::class, 'product_sku_id'); 
+    }   
+
 }

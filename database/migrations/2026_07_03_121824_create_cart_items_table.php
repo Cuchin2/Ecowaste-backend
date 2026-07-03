@@ -13,12 +13,11 @@ return new class extends Migration
     {
         Schema::create('cart_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('cart_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('product_sku_id')->constrained('product_skus')->onDelete('cascade');
             $table->integer('quantity')->default(1);
-            $table->decimal('price_at_add', 12, 2)->nullable();
             $table->timestamps();
-            $table->unique(['cart_id', 'product_sku_id'], 'cart_item_unique');
+            $table->unique(['user_id', 'product_sku_id']);
         });
     }
 

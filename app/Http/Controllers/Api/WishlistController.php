@@ -1,29 +1,24 @@
 <?php
-// app/Http/Controllers/Api/WishlistController.php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\WishlistItem;
-use App\Models\Cart;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class WishlistController extends Controller
 {
     /**
-     * Obtener el wishlist del usuario o del token de invitado
+     * Obtener el wishlist del usuario autenticado.
      */
-    public function index(Request $request)
+    public function index()
     {
-        $items = $this->getWishlistItems($request);
-        $items->load('sku.images');
-
+        $items = auth()->user()->wishlistItems()->with('sku.images')->get();
         return response()->json($items);
     }
 
     /**
-     * Añadir un SKU al wishlist
+     * Añadir un SKU al wishlist.
      */
     public function add(Request $request)
     {
@@ -31,23 +26,16 @@ class WishlistController extends Controller
             'sku_id' => 'required|exists:product_skus,id',
         ]);
 
-        $user = Auth::user();
-        $cartToken = $request->header('X-Cart-Token');
+        $user = auth()->user();
+        $existing = $user->wishlistItems()->where('product_sku_id', $request->sku_id)->first();
 
-        $data = ['product_sku_id' => $request->sku_id];
-        if ($user) {
-            $data['user_id'] = $user->id;
-        } else {
-            $data['cart_token'] = $cartToken ?? (string) \Illuminate\Support\Str::uuid();
-        }
-
-        // Evitar duplicados
-        $existing = WishlistItem::where($data)->first();
         if ($existing) {
             return response()->json(['message' => 'Ya está en tu wishlist'], 422);
         }
 
-        $item = WishlistItem::create($data);
+        $item = $user->wishlistItems()->create([
+            'product_sku_id' => $request->sku_id,
+        ]);
 
         return response()->json([
             'message' => 'Añadido a wishlist',
@@ -56,83 +44,43 @@ class WishlistController extends Controller
     }
 
     /**
-     * Eliminar un SKU del wishlist
+     * Eliminar un SKU del wishlist.
      */
-    public function remove(Request $request, $skuId)
+    public function remove($skuId)
     {
-        $user = Auth::user();
-        $cartToken = $request->header('X-Cart-Token');
-
-        $query = WishlistItem::where('product_sku_id', $skuId);
-        if ($user) {
-            $query->where('user_id', $user->id);
-        } else {
-            $query->where('cart_token', $cartToken);
-        }
-
-        $item = $query->firstOrFail();
+        $item = auth()->user()->wishlistItems()->where('product_sku_id', $skuId)->firstOrFail();
         $item->delete();
 
         return response()->json(['message' => 'Eliminado de wishlist']);
     }
 
     /**
-     * Mover un SKU del wishlist al carrito
+     * Mover un SKU del wishlist al carrito.
+     * Elimina el item del wishlist y lo agrega al carrito con cantidad 1.
      */
-    public function moveToCart(Request $request, $skuId)
+    public function moveToCart($skuId)
     {
-        $user = Auth::user();
-        $cartToken = $request->header('X-Cart-Token');
+        $user = auth()->user();
+        $wishlistItem = $user->wishlistItems()->where('product_sku_id', $skuId)->firstOrFail();
 
-        // 1. Verificar que el SKU existe en el wishlist
-        $wishlistQuery = WishlistItem::where('product_sku_id', $skuId);
-        if ($user) {
-            $wishlistQuery->where('user_id', $user->id);
-        } else {
-            $wishlistQuery->where('cart_token', $cartToken);
-        }
-        $wishlistItem = $wishlistQuery->firstOrFail();
-
-        // 2. Obtener el carrito activo (usuario o token)
-        $cart = Cart::getActiveCart($user, $cartToken);
-
-        // 3. Agregar al carrito (cantidad 1 por defecto)
-        $cartItem = $cart->items()->where('product_sku_id', $skuId)->first();
+        // Añadir al carrito (o sumar cantidad si ya existe)
+        $cartItem = $user->cartItems()->where('product_sku_id', $skuId)->first();
         if ($cartItem) {
             $cartItem->quantity += 1;
             $cartItem->save();
         } else {
-            $cart->items()->create([
+            $user->cartItems()->create([
                 'product_sku_id' => $skuId,
                 'quantity' => 1,
             ]);
         }
 
-        // 4. Eliminar del wishlist
+        // Eliminar del wishlist
         $wishlistItem->delete();
 
         return response()->json([
             'message' => 'Producto movido al carrito',
-            'cart' => $cart->load('items.sku'),
+            'items' => $user->cartItems()->with('sku.images')->get(),
         ]);
-    }
-
-    /**
-     * Obtener los items del wishlist según usuario o token
-     */
-    private function getWishlistItems(Request $request)
-    {
-        $user = Auth::user();
-        $cartToken = $request->header('X-Cart-Token');
-
-        $query = WishlistItem::with('sku');
-
-        if ($user) {
-            $query->where('user_id', $user->id);
-        } else {
-            $query->where('cart_token', $cartToken);
-        }
-
-        return $query->get();
     }
 }

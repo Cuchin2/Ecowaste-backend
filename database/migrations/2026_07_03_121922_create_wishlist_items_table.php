@@ -13,12 +13,10 @@ return new class extends Migration
     {
         Schema::create('wishlist_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->nullable()->constrained()->onDelete('cascade');
-            $table->string('session_id')->nullable();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('product_sku_id')->constrained('product_skus')->onDelete('cascade');
             $table->timestamps();
-            $table->unique(['user_id', 'product_sku_id'])->whereNotNull('user_id');
-            $table->unique(['session_id', 'product_sku_id'])->whereNotNull('session_id');
+            $table->unique(['user_id', 'product_sku_id']);
         });
     }
 

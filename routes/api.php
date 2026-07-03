@@ -144,6 +144,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('{sku}/images/reorder', [ProductSkuImageController::class, 'updateOrder']);
         Route::delete('{sku}/images/{image}', [ProductSkuImageController::class, 'destroy']);
     });
+    // Carrito
+    Route::prefix('cart')->group(function () {
+        Route::get('/', [CartController::class, 'index']);
+        Route::post('/items', [CartController::class, 'addItem']);
+        Route::patch('/items/{itemId}', [CartController::class, 'updateItem']);
+        Route::delete('/items/{itemId}', [CartController::class, 'removeItem']);
+        Route::delete('/clear', [CartController::class, 'clear']);
+        Route::post('/sync', [CartController::class, 'sync']); // sincronizar carrito local
+    });
+
+    // Wishlist
+    Route::prefix('wishlist')->group(function () {
+        Route::get('/', [WishlistController::class, 'index']);
+        Route::post('/', [WishlistController::class, 'add']);
+        Route::delete('/{skuId}', [WishlistController::class, 'remove']);
+        Route::post('/{skuId}/move-to-cart', [WishlistController::class, 'moveToCart']);
+    });
 });
 // Rutas públicas
 Route::get('/products-shop/{product}', [ProductSkuController::class, 'show']);
@@ -158,17 +175,3 @@ Route::get('ingredients', [IngredientController::class, 'index']);
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
 }); */
-Route::prefix('cart')->group(function () {
-    Route::get('/', [CartController::class, 'index']);
-    Route::post('/items', [CartController::class, 'addItem']);
-    Route::patch('/items/{itemId}', [CartController::class, 'updateItem']);
-    Route::delete('/items/{itemId}', [CartController::class, 'removeItem']);
-    Route::delete('/clear', [CartController::class, 'clear']);
-});
-
-Route::prefix('wishlist')->group(function () {
-    Route::get('/', [WishlistController::class, 'index']);
-    Route::post('/', [WishlistController::class, 'add']);
-    Route::delete('/{skuId}', [WishlistController::class, 'remove']);
-    Route::post('/{skuId}/move-to-cart', [WishlistController::class, 'moveToCart']);
-});

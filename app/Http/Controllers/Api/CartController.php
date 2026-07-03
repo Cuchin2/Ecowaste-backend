@@ -2,24 +2,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cart;
 use App\Models\CartItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class CartController extends Controller
 {
-public function index(Request $request)
-{
-    $cart = $this->getCart($request);
-    $cart->load('items.sku.images');
+    /**
+     * Obtener el carrito del usuario autenticado.
+     */
+    public function index()
+    {
+        $items = auth()->user()->cartItems()->with('sku.images')->get();
+        return response()->json(['items' => $items]);
+    }
 
-    return response()->json([
-        'cart' => $cart,
-        'cart_token' => $cart->cart_token, // 👈 enviar al frontend
-    ]);
-}
-
+    /**
+     * Añadir un item al carrito (o actualizar cantidad si ya existe).
+     */
     public function addItem(Request $request)
     {
         $request->validate([
@@ -28,30 +28,33 @@ public function index(Request $request)
             'price_at_add' => 'nullable|numeric|min:0',
         ]);
 
-        $cart = $this->getCart($request);
-        $skuId = $request->sku_id;
-        $quantity = $request->quantity;
+        $user = auth()->user();
+        $item = $user->cartItems()->where('product_sku_id', $request->sku_id)->first();
 
-        $item = $cart->items()->where('product_sku_id', $skuId)->first();
         if ($item) {
-            $item->quantity += $quantity;
+            $item->quantity += $request->quantity;
             $item->save();
         } else {
-            $cart->items()->create([
-                'product_sku_id' => $skuId,
-                'quantity' => $quantity,
+            $user->cartItems()->create([
+                'product_sku_id' => $request->sku_id,
+                'quantity' => $request->quantity,
                 'price_at_add' => $request->price_at_add,
             ]);
         }
 
-        return response()->json(['message' => 'Producto añadido al carrito', 'cart' => $cart->load('items.sku')]);
+        return response()->json([
+            'message' => 'Item añadido/actualizado en el carrito',
+            'items' => $user->cartItems()->with('sku.images')->get(),
+        ]);
     }
 
+    /**
+     * Actualizar la cantidad de un item específico.
+     */
     public function updateItem(Request $request, $itemId)
     {
         $request->validate(['quantity' => 'required|integer|min:0']);
-        $cart = $this->getCart($request);
-        $item = $cart->items()->findOrFail($itemId);
+        $item = auth()->user()->cartItems()->findOrFail($itemId);
 
         if ($request->quantity == 0) {
             $item->delete();
@@ -60,59 +63,64 @@ public function index(Request $request)
             $item->save();
         }
 
-        return response()->json(['message' => 'Item actualizado', 'cart' => $cart->load('items.sku')]);
+        return response()->json([
+            'message' => 'Item actualizado',
+            'items' => auth()->user()->cartItems()->with('sku.images')->get(),
+        ]);
     }
 
-    public function removeItem(Request $request, $itemId)
+    /**
+     * Eliminar un item del carrito.
+     */
+    public function removeItem($itemId)
     {
-        $cart = $this->getCart($request);
-        $item = $cart->items()->findOrFail($itemId);
+        $item = auth()->user()->cartItems()->findOrFail($itemId);
         $item->delete();
-        return response()->json(['message' => 'Item eliminado', 'cart' => $cart->load('items.sku')]);
+
+        return response()->json([
+            'message' => 'Item eliminado',
+            'items' => auth()->user()->cartItems()->with('sku.images')->get(),
+        ]);
     }
 
-    public function clear(Request $request)
+    /**
+     * Vaciar todo el carrito del usuario.
+     */
+    public function clear()
     {
-        $cart = $this->getCart($request);
-        $cart->items()->delete();
-        return response()->json(['message' => 'Carrito vaciado', 'cart' => $cart->load('items.sku')]);
+        auth()->user()->cartItems()->delete();
+        return response()->json(['message' => 'Carrito vaciado']);
     }
 
-    private function getCart(Request $request)
+    /**
+     * Sincronizar el carrito local (desde el frontend) con el backend.
+     * Se usa al hacer login para fusionar el carrito de invitado.
+     */
+    public function sync(Request $request)
     {
-        $user = Auth::user();
-        $cartToken = $request->header('X-Cart-Token');
+        $request->validate([
+            'items' => 'required|array',
+            'items.*.sku_id' => 'required|exists:product_skus,id',
+            'items.*.quantity' => 'required|integer|min:1',
+        ]);
 
-        if ($user) {
-            // Buscar carrito por user_id
-            $cart = Cart::where('user_id', $user->id)->first();
-            if ($cart) {
-                return $cart;
-            }
-
-            // Si no tiene carrito, verificar si tiene un carrito de invitado con el token
-            if ($cartToken) {
-                $guestCart = Cart::where('cart_token', $cartToken)->first();
-                if ($guestCart) {
-                    // Asignar el carrito invitado al usuario
-                    $guestCart->user_id = $user->id;
-                    $guestCart->save();
-                    return $guestCart;
-                }
-            }
-
-            // Crear nuevo carrito para el usuario
-            return Cart::create(['user_id' => $user->id]);
-        }
-
-        // Invitado: buscar por token o crear uno nuevo
-        if ($cartToken) {
-            $cart = Cart::where('cart_token', $cartToken)->first();
-            if ($cart) {
-                return $cart;
+        $user = auth()->user();
+        foreach ($request->items as $localItem) {
+            $item = $user->cartItems()->where('product_sku_id', $localItem['sku_id'])->first();
+            if ($item) {
+                $item->quantity += $localItem['quantity'];
+                $item->save();
+            } else {
+                $user->cartItems()->create([
+                    'product_sku_id' => $localItem['sku_id'],
+                    'quantity' => $localItem['quantity'],
+                ]);
             }
         }
 
-        return Cart::create();
+        return response()->json([
+            'message' => 'Carrito sincronizado',
+            'items' => $user->cartItems()->with('sku.images')->get(),
+        ]);
     }
 }
