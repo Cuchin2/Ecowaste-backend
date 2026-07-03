@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\ProductSkuController;
 use App\Http\Controllers\Api\ProductSkuImageController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\WishlistController;
+use App\Models\ProductSku;
 /**
  * RUTA PROTEGIDA POR SANCTUM
  */
@@ -171,6 +172,18 @@ Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
 Route::get('traces', [TraceController::class, 'index']);
 Route::get('aptitudes', [AptitudeController::class, 'index']);
 Route::get('ingredients', [IngredientController::class, 'index']);
+Route::get('/product-skus', function (Request $request) {
+    $idsString = $request->query('ids');
+    if (empty($idsString)) {
+        return response()->json([]);
+    }
+    $ids = explode(',', $idsString);
+    $ids = array_filter($ids, 'is_numeric'); // seguridad
+    if (empty($ids)) {
+        return response()->json([]);
+    }
+    return ProductSku::whereIn('id', $ids)->with('images')->get();
+});
 /* Route::get('/pruebas/backend', [PruebaController::class, 'index']); */
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
