@@ -15,7 +15,9 @@ class WishlistController extends Controller
      */
     public function index()
     {
-        $items = auth()->user()->wishlistItems()->with('sku.images')->get();
+        $items = auth()->user()->wishlistItems()
+            ->with(['sku.images', 'sku.colorFlavor', 'sku.empaque', 'sku.product.brand'])
+            ->get();
         return response()->json($items);
     }
 
