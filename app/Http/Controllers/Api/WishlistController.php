@@ -92,42 +92,42 @@ class WishlistController extends Controller
         $wishlistItem = $user->wishlistItems()->where('product_sku_id', $skuId)->firstOrFail();
         $quantity = $wishlistItem->quantity;
 
-        // 2. Obtener o crear carrito del usuario
-        $cart = Cart::firstOrCreate(['user_id' => $user->id]);
+        // 2. Buscar o crear el item en el carrito del usuario
+        $cartItem = CartItem::where('user_id', $user->id)
+                            ->where('product_sku_id', $skuId)
+                            ->first();
 
-        // 3. Agregar al carrito con la cantidad del wishlist
-        $cartItem = $cart->items()->where('product_sku_id', $skuId)->first();
         if ($cartItem) {
             $cartItem->quantity += $quantity;
             $cartItem->save();
         } else {
-            $cart->items()->create([
+            CartItem::create([
+                'user_id' => $user->id,
                 'product_sku_id' => $skuId,
-                'quantity'       => $quantity,
+                'quantity' => $quantity,
             ]);
         }
 
-        // 4. Eliminar del wishlist
+        // 3. Eliminar del wishlist
         $wishlistItem->delete();
 
         return response()->json([
             'message' => 'Producto movido al carrito',
-            'cart'    => $cart->load('items.sku'),
         ]);
     }
-    public function update(Request $request, $skuId)
-{
-    $request->validate([
-        'quantity' => 'required|integer|min:1',
-    ]);
+        public function update(Request $request, $skuId)
+    {
+        $request->validate([
+            'quantity' => 'required|integer|min:1',
+        ]);
 
-    $item = auth()->user()->wishlistItems()->where('product_sku_id', $skuId)->firstOrFail();
-    $item->quantity = $request->quantity;
-    $item->save();
+        $item = auth()->user()->wishlistItems()->where('product_sku_id', $skuId)->firstOrFail();
+        $item->quantity = $request->quantity;
+        $item->save();
 
-    return response()->json([
-        'message' => 'Cantidad actualizada',
-        'item' => $item->load('sku.images'),
-    ]);
-}
+        return response()->json([
+            'message' => 'Cantidad actualizada',
+            'item' => $item->load('sku.images'),
+        ]);
+    }
 }
