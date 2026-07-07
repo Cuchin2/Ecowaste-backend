@@ -161,7 +161,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [WishlistController::class, 'add']);
         Route::delete('/{skuId}', [WishlistController::class, 'remove']);
         Route::post('/{skuId}/move-to-cart', [WishlistController::class, 'moveToCart']);
-        Route::patch('/wishlist/{skuId}', [WishlistController::class, 'update']);
+        Route::patch('/{skuId}', [WishlistController::class, 'update']);
     });
 });
 // Rutas públicas
