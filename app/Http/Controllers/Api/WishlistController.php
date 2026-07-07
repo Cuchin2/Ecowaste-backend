@@ -115,4 +115,19 @@ class WishlistController extends Controller
             'cart'    => $cart->load('items.sku'),
         ]);
     }
+    public function update(Request $request, $skuId)
+{
+    $request->validate([
+        'quantity' => 'required|integer|min:1',
+    ]);
+
+    $item = auth()->user()->wishlistItems()->where('product_sku_id', $skuId)->firstOrFail();
+    $item->quantity = $request->quantity;
+    $item->save();
+
+    return response()->json([
+        'message' => 'Cantidad actualizada',
+        'item' => $item->load('sku.images'),
+    ]);
+}
 }
