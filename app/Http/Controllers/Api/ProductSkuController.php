@@ -18,7 +18,30 @@ class ProductSkuController extends Controller
      * @param  \App\Models\ProductSku           $sku
      * @return \Illuminate\Http\JsonResponse
      */
+public function getByIds(Request $request)
+{
+    $idsString = $request->query('ids');
+    if (empty($idsString)) {
+        return response()->json([]);
+    }
 
+    $ids = explode(',', $idsString);
+    $ids = array_filter($ids, 'is_numeric'); // seguridad
+    if (empty($ids)) {
+        return response()->json([]);
+    }
+
+    $skus = ProductSku::whereIn('id', $ids)
+        ->with([
+            'images',
+            'colorFlavor',
+            'empaque',
+            'product.brand'
+        ])
+        ->get();
+
+    return response()->json($skus);
+}
 public function show(Product $product)
 {
     $product->load([

@@ -145,7 +145,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('{sku}/images/reorder', [ProductSkuImageController::class, 'updateOrder']);
         Route::delete('{sku}/images/{image}', [ProductSkuImageController::class, 'destroy']);
     });
-
+    // Carrito
+    Route::prefix('cart')->group(function () {
+        Route::get('/', [CartController::class, 'index']);
+        Route::post('/items', [CartController::class, 'addItem']);
+        Route::patch('/items/{itemId}', [CartController::class, 'updateItem']);
+        Route::delete('/items/{itemId}', [CartController::class, 'removeItem']);
+        Route::delete('/clear', [CartController::class, 'clear']);
+        Route::post('/sync', [CartController::class, 'sync']); // sincronizar carrito local
+    });
 
     // Wishlist
     Route::prefix('wishlist')->group(function () {
@@ -165,27 +173,7 @@ Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
 Route::get('traces', [TraceController::class, 'index']);
 Route::get('aptitudes', [AptitudeController::class, 'index']);
 Route::get('ingredients', [IngredientController::class, 'index']);
-Route::get('/product-skus', function (Request $request) {
-    $idsString = $request->query('ids');
-    if (empty($idsString)) {
-        return response()->json([]);
-    }
-    $ids = explode(',', $idsString);
-    $ids = array_filter($ids, 'is_numeric'); // seguridad
-    if (empty($ids)) {
-        return response()->json([]);
-    }
-    return ProductSku::whereIn('id', $ids)->with('images')->get();
-});
-// Carrito
-    Route::prefix('cart')->group(function () {
-        Route::get('/', [CartController::class, 'index']);
-        Route::post('/items', [CartController::class, 'addItem']);
-        Route::patch('/items/{itemId}', [CartController::class, 'updateItem']);
-        Route::delete('/items/{itemId}', [CartController::class, 'removeItem']);
-        Route::delete('/clear', [CartController::class, 'clear']);
-        Route::post('/sync', [CartController::class, 'sync']); // sincronizar carrito local
-    });
+Route::get('/product-skus', [ProductSkuController::class, 'getByIds']);
 /* Route::get('/pruebas/backend', [PruebaController::class, 'index']); */
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
