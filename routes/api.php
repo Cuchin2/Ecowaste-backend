@@ -145,15 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('{sku}/images/reorder', [ProductSkuImageController::class, 'updateOrder']);
         Route::delete('{sku}/images/{image}', [ProductSkuImageController::class, 'destroy']);
     });
-    // Carrito
-    Route::prefix('cart')->group(function () {
-        Route::get('/', [CartController::class, 'index']);
-        Route::post('/items', [CartController::class, 'addItem']);
-        Route::patch('/items/{itemId}', [CartController::class, 'updateItem']);
-        Route::delete('/items/{itemId}', [CartController::class, 'removeItem']);
-        Route::delete('/clear', [CartController::class, 'clear']);
-        Route::post('/sync', [CartController::class, 'sync']); // sincronizar carrito local
-    });
+
 
     // Wishlist
     Route::prefix('wishlist')->group(function () {
@@ -185,6 +177,15 @@ Route::get('/product-skus', function (Request $request) {
     }
     return ProductSku::whereIn('id', $ids)->with('images')->get();
 });
+// Carrito
+    Route::prefix('cart')->group(function () {
+        Route::get('/', [CartController::class, 'index']);
+        Route::post('/items', [CartController::class, 'addItem']);
+        Route::patch('/items/{itemId}', [CartController::class, 'updateItem']);
+        Route::delete('/items/{itemId}', [CartController::class, 'removeItem']);
+        Route::delete('/clear', [CartController::class, 'clear']);
+        Route::post('/sync', [CartController::class, 'sync']); // sincronizar carrito local
+    });
 /* Route::get('/pruebas/backend', [PruebaController::class, 'index']); */
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
