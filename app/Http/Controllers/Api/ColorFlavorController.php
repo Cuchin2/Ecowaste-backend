@@ -12,7 +12,7 @@ class ColorFlavorController extends Controller
 {
     public function index()
     {
-        $items = ColorFlavor::orderBy('type')->orderBy('name')->get();
+        $items = ColorFlavor::orderBy('type')->ordered()->get();
         return response()->json($items);
     }
 
@@ -91,6 +91,30 @@ class ColorFlavorController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
+        }
+    }
+    public function reorder(Request $request)
+    {
+        $request->validate([
+            'colors' => 'required|array',
+            'colors.*.id' => 'required|exists:color_flavor,id',
+            'colors.*.order' => 'required|integer|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->colors as $item) {
+                ColorFlavor::where('id', $item['id'])->update(['order' => $item['order']]);
+            }
+            DB::commit();
+
+            $colors = ColorFlavor::ordered()->get();
+            return response()->json($colors);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Error al reordenar los colores/sabores: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

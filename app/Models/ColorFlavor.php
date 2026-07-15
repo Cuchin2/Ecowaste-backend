@@ -16,11 +16,18 @@ class ColorFlavor extends Model
         'hex',
         'code',
         'type',
+        'order',
     ];
 
     protected $casts = [
         'type' => 'string',
+        'order' => 'integer', 
     ];
+        // Scope para ordenar por defecto
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('order');
+    }
     public function products()
     {
         return $this->belongsToMany(Product::class, 'color_flavor_product')
