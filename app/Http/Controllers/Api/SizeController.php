@@ -14,7 +14,7 @@ class SizeController extends Controller
      */
     public function index()
     {
-        $sizes = Size::get();
+        $sizes = Size::ordered()->get(); // o Size::orderBy('order')->get()
         return response()->json($sizes);
     }
 
@@ -121,4 +121,29 @@ class SizeController extends Controller
 
         return response()->json($tipos);
     }
+    public function reorder(Request $request)
+{
+    $request->validate([
+        'sizes' => 'required|array',
+        'sizes.*.id' => 'required|exists:sizes,id',
+        'sizes.*.order' => 'required|integer|min:0',
+    ]);
+
+    DB::beginTransaction();
+    try {
+        foreach ($request->sizes as $item) {
+            Size::where('id', $item['id'])->update(['order' => $item['order']]);
+        }
+        DB::commit();
+
+        // Opcional: devolver la lista reordenada
+        $sizes = Size::ordered()->get();
+        return response()->json($sizes);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'error' => 'Error al reordenar las tallas: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }

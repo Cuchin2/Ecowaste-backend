@@ -13,7 +13,17 @@ class Size extends Model
         'name',
         'tipo_unidad',
         'code',
+        'order',
     ];
+
+    protected $casts = [
+        'order' => 'integer',  // ← agregado
+    ];
+    // Opcional: scope para ordenar por defecto
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('order');
+    }
     public function products()
     {
         return $this->belongsToMany(Product::class, 'product_size');
