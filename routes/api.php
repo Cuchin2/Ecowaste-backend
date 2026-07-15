@@ -107,7 +107,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('brands', BrandController::class);
     // Tallas
     Route::get('sizes/tipos-unidad', [SizeController::class, 'tiposUnidad']);
-    Route::post('/sizes/reorder', [SizeController::class, 'reorder']);  
+    Route::patch('/sizes/reorder', [SizeController::class, 'reorder']);  
     Route::apiResource('sizes', SizeController::class);
     // Color / Sabor
     Route::apiResource('color-flavor', ColorFlavorController::class);
