@@ -62,7 +62,7 @@ class IngredientController extends Controller
     }
             public function reorder(Request $request)
         {
-            $order = $request->input('order');
+            $order = $request->items->input('order');
             foreach ($order as $index => $id) {
                 Ingredient::where('id', $id)->update(['order' => $index]);
             }
