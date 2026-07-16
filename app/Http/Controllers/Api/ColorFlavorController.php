@@ -97,7 +97,7 @@ class ColorFlavorController extends Controller
     {
         DB::beginTransaction();
         try {
-            foreach ($request->colors as $item) {
+            foreach ($request->items as $item) {
                 ColorFlavor::where('id', $item['id'])->update(['order' => $item['order']]);
             }
             DB::commit();
