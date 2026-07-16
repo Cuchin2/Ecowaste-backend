@@ -14,6 +14,10 @@ class Ingredient extends Model
         'name',
         'description',
         'slug',
+        'order',
+    ];
+    protected $casts = [
+        'order' => 'integer', 
     ];
     public function scopeOrdered($query)
     {
