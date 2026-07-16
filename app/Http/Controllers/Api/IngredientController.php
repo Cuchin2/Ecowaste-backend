@@ -66,16 +66,16 @@ class IngredientController extends Controller
         DB::beginTransaction();
         try {
             foreach ($request->items as $item) {
-                ColorFlavor::where('id', $item['id'])->update(['order' => $item['order']]);
+                Ingredient::where('id', $item['id'])->update(['order' => $item['order']]);
             }
             DB::commit();
 
-            $colors = ColorFlavor::ordered()->get();
+            $colors = Ingredient::ordered()->get();
             return response()->json($colors);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
-                'error' => 'Error al reordenar los colores/sabores: ' . $e->getMessage()
+                'error' => 'Error al reordenar los ingredientes: ' . $e->getMessage()
             ], 500);
         }
     }
