@@ -12,7 +12,7 @@ class ColorFlavorController extends Controller
 {
     public function index()
     {
-        $items = ColorFlavor::orderBy('type')->orderBy('name')->get();
+        $items = ColorFlavor::ordered()->get();
         return response()->json($items);
     }
 
