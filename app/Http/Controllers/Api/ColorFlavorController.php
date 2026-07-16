@@ -95,12 +95,6 @@ class ColorFlavorController extends Controller
     }
     public function reorder(Request $request)
     {
-        $request->validate([
-            'colors' => 'required|array',
-            'colors.*.id' => 'required|exists:color_flavor,id',
-            'colors.*.order' => 'required|integer|min:0',
-        ]);
-
         DB::beginTransaction();
         try {
             foreach ($request->colors as $item) {
