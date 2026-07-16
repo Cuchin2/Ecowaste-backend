@@ -13,7 +13,7 @@ class EmpaqueController extends Controller
      */
     public function index()
     {
-        $empaques = Empaque::get();
+        $empaques = Empaque::ordered()->get();
         return response()->json($empaques);
     }
 
