@@ -60,13 +60,22 @@ class IngredientController extends Controller
             return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
         }
     }
-            public function reorder(Request $request)
-        {
-            $order = $request->items->input('order');
-            foreach ($order as $index => $id) {
-                Ingredient::where('id', $id)->update(['order' => $index]);
+    public function reorder(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            foreach ($request->items as $item) {
+                ColorFlavor::where('id', $item['id'])->update(['order' => $item['order']]);
             }
+            DB::commit();
 
-            return response()->json(['message' => 'Orden actualizado correctamente']);
+            $colors = ColorFlavor::ordered()->get();
+            return response()->json($colors);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Error al reordenar los colores/sabores: ' . $e->getMessage()
+            ], 500);
         }
+    }
 }
