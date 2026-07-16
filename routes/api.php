@@ -113,6 +113,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/color-flavor/reorder', [ColorFlavorController::class, 'reorder']);
     Route::apiResource('color-flavor', ColorFlavorController::class);
     // Empaques
+    Route::patch('/empaques/reorder', [EmpaqueController::class, 'reorder']);
     Route::apiResource('empaques', EmpaqueController::class);
     // Especial
     Route::patch('specials/reorder', [SpecialController::class, 'reorder']);

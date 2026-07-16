@@ -96,4 +96,22 @@ class EmpaqueController extends Controller
             ], 500);
         }
     }
+    public function reorder(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            foreach ($request->items as $item) {
+                Empaque::where('id', $item['id'])->update(['order' => $item['order']]);
+            }
+            DB::commit();
+
+            $colors = Empaque::ordered()->get();
+            return response()->json($colors);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Error al reordenar los empaques: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

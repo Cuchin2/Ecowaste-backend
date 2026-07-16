@@ -14,10 +14,12 @@ class Empaque extends Model
         'name',
         'code',
         'tipo',
+        'order', 
     ];
 
     protected $casts = [
         'tipo' => 'boolean',
+        'order' => 'integer',
     ];
     public function products()
     {
