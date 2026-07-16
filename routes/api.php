@@ -110,7 +110,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/sizes/reorder', [SizeController::class, 'reorder']);  
     Route::apiResource('sizes', SizeController::class);
     // Color / Sabor
-    Route::patch('/colors-flavor/reorder', [ColorFlavorController::class, 'reorder']);
+    Route::patch('/color-flavor/reorder', [ColorFlavorController::class, 'reorder']);
     Route::apiResource('color-flavor', ColorFlavorController::class);
     // Empaques
     Route::apiResource('empaques', EmpaqueController::class);
