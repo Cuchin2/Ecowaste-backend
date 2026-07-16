@@ -60,4 +60,13 @@ class IngredientController extends Controller
             return response()->json(['error' => 'Error al eliminar: ' . $e->getMessage()], 500);
         }
     }
+            public function reorder(Request $request)
+        {
+            $order = $request->input('order');
+            foreach ($order as $index => $id) {
+                Ingredient::where('id', $id)->update(['order' => $index]);
+            }
+
+            return response()->json(['message' => 'Orden actualizado correctamente']);
+        }
 }

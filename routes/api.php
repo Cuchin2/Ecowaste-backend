@@ -118,6 +118,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('specials/reorder', [SpecialController::class, 'reorder']);
     Route::apiResource('specials', SpecialController::class);
     // Ingredientes
+    Route::patch('/ingredients/reorder', [IngredientController::class, 'reorder']);
     Route::apiResource('ingredients', IngredientController::class)->except('index');
     // Aptitudes
     Route::patch('aptitudes/reorder', [AptitudeController::class, 'reorder']);

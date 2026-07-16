@@ -15,7 +15,10 @@ class Ingredient extends Model
         'description',
         'slug',
     ];
-
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('order', 'asc');
+    }
     protected static function boot()
     {
         parent::boot();
