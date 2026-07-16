@@ -16,7 +16,10 @@ class Empaque extends Model
         'tipo',
         'order', 
     ];
-
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('order', 'asc');
+    }
     protected $casts = [
         'tipo' => 'boolean',
         'order' => 'integer',
