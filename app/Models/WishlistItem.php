@@ -1,28 +1,28 @@
 <?php
 
+// app/Models/WishlistItem.php
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class WishlistItem extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
-    'user_id',
-    'product_sku_id',
-    'quantity', // 👈 nuevo
+        'wishlist_id', 'product_sku_id', 'quantity', 'note', 'order'
     ];
 
-    public function user() 
-    { 
-        return $this->belongsTo(User::class);
+    protected $casts = [
+        'quantity' => 'integer',
+        'order' => 'integer',
+    ];
+
+    public function wishlist()
+    {
+        return $this->belongsTo(Wishlist::class);
     }
 
-    public function sku() 
-    { 
-        return $this->belongsTo(ProductSku::class, 'product_sku_id'); 
-    }   
-
+    public function sku()
+    {
+        return $this->belongsTo(ProductSku::class, 'product_sku_id');
+    }
 }

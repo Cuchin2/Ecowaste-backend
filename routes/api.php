@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\ProductSkuController;
 use App\Http\Controllers\Api\ProductSkuImageController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\WishlistController;
+use App\Http\Controllers\Api\WishlistItemController ;
 use App\Models\ProductSku;
 /**
  * RUTA PROTEGIDA POR SANCTUM
@@ -149,7 +150,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('{sku}/images/reorder', [ProductSkuImageController::class, 'updateOrder']);
         Route::delete('{sku}/images/{image}', [ProductSkuImageController::class, 'destroy']);
     });
-    // Carrito
+    // Carrito 🛒
     Route::prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'index']);
         Route::post('/items', [CartController::class, 'addItem']);
@@ -159,13 +160,62 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/sync', [CartController::class, 'sync']); // sincronizar carrito local
     });
 
-    // Wishlist
-    Route::prefix('wishlist')->group(function () {
+    // ============================================================
+    // 1. RUTAS PARA GESTIONAR LISTAS (WISHLISTS)
+    // ============================================================
+    Route::prefix('wishlists')->group(function () {
+        // Obtener todas las listas del usuario
         Route::get('/', [WishlistController::class, 'index']);
-        Route::post('/', [WishlistController::class, 'add']);
-        Route::delete('/{skuId}', [WishlistController::class, 'remove']);
-        Route::post('/{skuId}/move-to-cart', [WishlistController::class, 'moveToCart']);
-        Route::patch('/{skuId}', [WishlistController::class, 'update']);
+        
+        // Crear una nueva lista
+        Route::post('/', [WishlistController::class, 'store']);
+        
+        // Ver/actualizar/eliminar una lista específica
+        Route::get('/{wishlist}', [WishlistController::class, 'show']);
+        Route::put('/{wishlist}', [WishlistController::class, 'update']);
+        Route::delete('/{wishlist}', [WishlistController::class, 'destroy']);
+        
+        // Establecer lista por defecto
+        Route::patch('/{wishlist}/set-default', [WishlistController::class, 'setDefault']);
+        
+        // Reordenar listas (drag & drop)
+        Route::post('/reorder', [WishlistController::class, 'reorder']);
+
+        // Mover toda la lista al carrito
+        Route::post('/{wishlist}/move-all-to-cart', [WishlistController::class, 'moveAllToCart']);
+    });
+
+    // ============================================================
+    // 2. RUTAS PARA GESTIONAR ÍTEMS DENTRO DE UNA LISTA
+    // ============================================================
+    Route::prefix('wishlists/{wishlist}/items')->group(function () {
+        // Obtener items de una lista específica
+        Route::get('/', [WishlistItemController::class, 'index']);
+        
+        // Añadir un item a esta lista
+        Route::post('/', [WishlistItemController::class, 'store']);
+        
+        // Actualizar/eliminar un item específico
+        Route::put('/{item}', [WishlistItemController::class, 'update']);
+        Route::delete('/{item}', [WishlistItemController::class, 'destroy']);
+        
+        // Mover item a otra lista
+        Route::post('/{item}/move', [WishlistItemController::class, 'move']);
+        
+        // Mover item al carrito
+        Route::post('/{item}/move-to-cart', [WishlistItemController::class, 'moveToCart']);
+        
+        // Reordenar items dentro de la lista
+        Route::post('/reorder', [WishlistItemController::class, 'reorder']);
+    });
+
+    // ============================================================
+    // 3. (OPCIONAL) RUTAS PARA COMPARTIR LISTAS
+    // ============================================================
+    Route::prefix('wishlists/{wishlist}/shares')->group(function () {
+        Route::get('/', [WishlistShareController::class, 'index']);
+        Route::post('/', [WishlistShareController::class, 'store']);
+        Route::delete('/{share}', [WishlistShareController::class, 'destroy']);
     });
 });
 // Rutas públicas

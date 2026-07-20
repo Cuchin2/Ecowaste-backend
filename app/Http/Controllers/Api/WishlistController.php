@@ -1,133 +1,217 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\WishlistItem;
-use App\Models\CartItem;
+use App\Models\Wishlist;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str; // 👈 importar Str
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class WishlistController extends Controller
 {
     /**
-     * Obtener el wishlist del usuario autenticado.
+     * Obtener todas las listas del usuario autenticado.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $items = auth()->user()->wishlistItems()
-            ->with(['sku.images', 'sku.colorFlavor', 'sku.empaque', 'sku.product.brand'])
+        $lists = Wishlist::where('user_id', auth()->id())
+            ->withCount('items')
+            ->orderBy('order')
             ->get();
-        return response()->json($items);
+
+        return response()->json($lists);
     }
 
     /**
-     * Añadir un SKU al wishlist.
+     * Crear una nueva lista de deseos.
      */
-    public function add(Request $request)
+    public function store(Request $request)
     {
-        $request->validate([
-            'sku_id'   => 'required|exists:product_skus,id',
-            'quantity' => 'sometimes|integer|min:1',
+        $validated = $request->validate([
+            'name'         => 'required|string|max:255',
+            'description'  => 'nullable|string|max:500',
+            'is_public'    => 'boolean',
+            'is_default'   => 'boolean',
         ]);
 
-        $user = Auth::user();
-        $cartToken = $request->header('X-Cart-Token');
+        // Si se marca como default, desmarcar las demás
+        if (isset($validated['is_default']) && $validated['is_default'] === true) {
+            Wishlist::where('user_id', auth()->id())
+                ->where('is_default', true)
+                ->update(['is_default' => false]);
+        }
 
-        $data = [
-            'product_sku_id' => $request->sku_id,
-            'quantity'       => $request->quantity ?? 1,
-        ];
+        $wishlist = Wishlist::create([
+            'user_id'     => auth()->id(),
+            'name'        => $validated['name'],
+            'slug'        => Str::slug($validated['name']) . '-' . Str::random(6), // evitar colisiones
+            'description' => $validated['description'] ?? null,
+            'is_public'   => $validated['is_public'] ?? false,
+            'is_default'  => $validated['is_default'] ?? false,
+            'order'       => Wishlist::where('user_id', auth()->id())->max('order') + 1,
+        ]);
 
-        if ($user) {
-            $data['user_id'] = $user->id;
-            // Si hay token, eliminar posible duplicado con token
-            if ($cartToken) {
-                WishlistItem::where('cart_token', $cartToken)
-                    ->where('product_sku_id', $request->sku_id)
-                    ->delete();
+        $wishlist->loadCount('items');
+
+        return response()->json($wishlist, 201);
+    }
+
+    /**
+     * Mostrar una lista específica (con sus items).
+     */
+    public function show(Wishlist $wishlist)
+    {
+        // Solo permitir si la lista pertenece al usuario autenticado
+        if ($wishlist->user_id !== auth()->id()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $wishlist->load(['items.sku.product.brand', 'items.sku.images', 'items.sku.colorFlavor', 'items.sku.empaque']);
+        $wishlist->loadCount('items');
+
+        return response()->json($wishlist);
+    }
+
+    /**
+     * Actualizar una lista existente.
+     */
+    public function update(Request $request, Wishlist $wishlist)
+    {
+        if ($wishlist->user_id !== auth()->id()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $validated = $request->validate([
+            'name'         => 'sometimes|string|max:255',
+            'description'  => 'nullable|string|max:500',
+            'is_public'    => 'boolean',
+            'is_default'   => 'boolean',
+        ]);
+
+        // Si se marca como default, desmarcar las demás
+        if (isset($validated['is_default']) && $validated['is_default'] === true) {
+            Wishlist::where('user_id', auth()->id())
+                ->where('id', '!=', $wishlist->id)
+                ->where('is_default', true)
+                ->update(['is_default' => false]);
+        }
+
+        // Si cambia el nombre, regenerar slug
+        if (isset($validated['name']) && $validated['name'] !== $wishlist->name) {
+            $validated['slug'] = Str::slug($validated['name']) . '-' . Str::random(6);
+        }
+
+        $wishlist->update($validated);
+
+        $wishlist->loadCount('items');
+
+        return response()->json($wishlist);
+    }
+
+    /**
+     * Eliminar una lista (y sus items en cascada).
+     */
+    public function destroy(Wishlist $wishlist)
+    {
+        if ($wishlist->user_id !== auth()->id()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        // Si la lista eliminada era la predeterminada, asignar otra como default
+        if ($wishlist->is_default) {
+            $newDefault = Wishlist::where('user_id', auth()->id())
+                ->where('id', '!=', $wishlist->id)
+                ->orderBy('order')
+                ->first();
+
+            if ($newDefault) {
+                $newDefault->update(['is_default' => true]);
             }
-        } else {
-            $data['cart_token'] = $cartToken ?? (string) Str::uuid();
         }
 
-        // Evitar duplicados
-        $existing = WishlistItem::where($data)->first();
-        if ($existing) {
-            $existing->quantity += $request->quantity ?? 1;
-            $existing->save();
-            return response()->json([
-                'message' => 'Cantidad actualizada en wishlist',
-                'item'    => $existing->load('sku'),
-            ]);
-        }
+        $wishlist->delete();
 
-        $item = WishlistItem::create($data);
-
-        return response()->json([
-            'message' => 'Añadido a wishlist',
-            'item'    => $item->load('sku'),
-        ], 201);
+        return response()->json(['message' => 'Lista eliminada correctamente']);
     }
 
     /**
-     * Eliminar un SKU del wishlist.
+     * Establecer una lista como predeterminada.
      */
-    public function remove($skuId)
+    public function setDefault(Wishlist $wishlist)
     {
-        $item = auth()->user()->wishlistItems()->where('product_sku_id', $skuId)->firstOrFail();
-        $item->delete();
+        if ($wishlist->user_id !== auth()->id()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
 
-        return response()->json(['message' => 'Eliminado de wishlist']);
+        // Desmarcar todas las demás
+        Wishlist::where('user_id', auth()->id())
+            ->where('is_default', true)
+            ->update(['is_default' => false]);
+
+        // Marcar esta como default
+        $wishlist->update(['is_default' => true]);
+
+        return response()->json(['message' => 'Lista marcada como predeterminada']);
     }
 
     /**
-     * Mover un SKU del wishlist al carrito.
+     * Reordenar listas (drag & drop).
      */
-    public function moveToCart(Request $request, $skuId)
+    public function reorder(Request $request)
     {
+        $validated = $request->validate([
+            'order' => 'required|array',
+            'order.*.id' => 'required|exists:wishlists,id',
+            'order.*.order' => 'required|integer|min:0',
+        ]);
+
+        $user = auth()->id();
+
+        foreach ($validated['order'] as $item) {
+            Wishlist::where('id', $item['id'])
+                ->where('user_id', $user)
+                ->update(['order' => $item['order']]);
+        }
+
+        return response()->json(['message' => 'Orden actualizado correctamente']);
+    }
+
+    public function moveAllToCart(Wishlist $wishlist)
+    {
+        if ($wishlist->user_id !== auth()->id()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
         $user = auth()->user();
 
-        // 1. Obtener el item del wishlist
-        $wishlistItem = $user->wishlistItems()->where('product_sku_id', $skuId)->firstOrFail();
-        $quantity = $wishlistItem->quantity;
+        DB::transaction(function () use ($user, $wishlist) {
+            $cart = Cart::firstOrCreate(
+                ['user_id' => $user->id],
+                ['session_id' => null]
+            );
 
-        // 2. Buscar o crear el item en el carrito del usuario
-        $cartItem = CartItem::where('user_id', $user->id)
-                            ->where('product_sku_id', $skuId)
-                            ->first();
+            foreach ($wishlist->items as $item) {
+                $cartItem = CartItem::where('cart_id', $cart->id)
+                    ->where('product_sku_id', $item->product_sku_id)
+                    ->first();
 
-        if ($cartItem) {
-            $cartItem->quantity += $quantity;
-            $cartItem->save();
-        } else {
-            CartItem::create([
-                'user_id' => $user->id,
-                'product_sku_id' => $skuId,
-                'quantity' => $quantity,
-            ]);
-        }
+                if ($cartItem) {
+                    $cartItem->quantity += $item->quantity;
+                    $cartItem->save();
+                } else {
+                    CartItem::create([
+                        'cart_id'         => $cart->id,
+                        'product_sku_id'  => $item->product_sku_id,
+                        'quantity'        => $item->quantity,
+                        'price_at_add'    => $item->sku->sell_price ?? 0,
+                    ]);
+                }
+            }
 
-        // 3. Eliminar del wishlist
-        $wishlistItem->delete();
+            $wishlist->items()->delete();
+        });
 
-        return response()->json([
-            'message' => 'Producto movido al carrito',
-        ]);
-    }
-        public function update(Request $request, $skuId)
-    {
-        $request->validate([
-            'quantity' => 'required|integer|min:1',
-        ]);
-
-        $item = auth()->user()->wishlistItems()->where('product_sku_id', $skuId)->firstOrFail();
-        $item->quantity = $request->quantity;
-        $item->save();
-
-        return response()->json([
-            'message' => 'Cantidad actualizada',
-            'item' => $item->load('sku.images'),
-        ]);
+        return response()->json(['message' => 'Todos los items movidos al carrito correctamente']);
     }
 }
