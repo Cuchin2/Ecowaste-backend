@@ -187,26 +187,22 @@ class WishlistItemController extends Controller
         $user = auth()->user();
 
         DB::transaction(function () use ($user, $item) {
-            // Obtener o crear carrito del usuario
-            $cart = Cart::firstOrCreate(
-                ['user_id' => $user->id],
-                ['session_id' => null]
-            );
-
-            // Buscar si ya existe el SKU en el carrito
-            $cartItem = CartItem::where('cart_id', $cart->id)
+            // Buscar si ya existe el SKU en el carrito del usuario
+            $cartItem = CartItem::where('user_id', $user->id)
                 ->where('product_sku_id', $item->product_sku_id)
                 ->first();
 
             if ($cartItem) {
+                // Si ya existe, sumamos la cantidad
                 $cartItem->quantity += $item->quantity;
                 $cartItem->save();
             } else {
+                // Si no existe, creamos uno nuevo
                 CartItem::create([
-                    'cart_id'         => $cart->id,
+                    'user_id'         => $user->id,
                     'product_sku_id'  => $item->product_sku_id,
                     'quantity'        => $item->quantity,
-                    'price_at_add'    => $item->sku->sell_price ?? 0,
+                    // 'price_at_add' lo puedes agregar si tu modelo lo soporta, o quitarlo
                 ]);
             }
 
@@ -239,5 +235,45 @@ class WishlistItemController extends Controller
         }
 
         return response()->json(['message' => 'Orden actualizado correctamente']);
+    }
+    public function moveMultipleToCart(Request $request, Wishlist $wishlist)
+    {
+        if ($wishlist->user_id !== auth()->id()) {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $validated = $request->validate([
+            'item_ids' => 'required|array',
+            'item_ids.*' => 'exists:wishlist_items,id',
+        ]);
+
+        $user = auth()->user();
+
+        DB::transaction(function () use ($user, $wishlist, $validated) {
+            $items = $wishlist->items()
+                ->whereIn('id', $validated['item_ids'])
+                ->with('sku')
+                ->get();
+
+            foreach ($items as $item) {
+                $cartItem = CartItem::where('user_id', $user->id)
+                    ->where('product_sku_id', $item->product_sku_id)
+                    ->first();
+
+                if ($cartItem) {
+                    $cartItem->quantity += $item->quantity;
+                    $cartItem->save();
+                } else {
+                    CartItem::create([
+                        'user_id'         => $user->id,
+                        'product_sku_id'  => $item->product_sku_id,
+                        'quantity'        => $item->quantity,
+                    ]);
+                }
+                $item->delete();
+            }
+        });
+
+        return response()->json(['message' => 'Items movidos al carrito correctamente']);
     }
 }

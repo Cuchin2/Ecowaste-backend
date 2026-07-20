@@ -183,6 +183,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Mover toda la lista al carrito
         Route::post('/{wishlist}/move-all-to-cart', [WishlistController::class, 'moveAllToCart']);
+
     });
 
     // ============================================================
@@ -202,9 +203,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Mover item a otra lista
         Route::post('/{item}/move', [WishlistItemController::class, 'move']);
         
-        // Mover item al carrito
+        // Mover item al carrito (individual)
         Route::post('/{item}/move-to-cart', [WishlistItemController::class, 'moveToCart']);
-        
+        // ✅ NUEVA: Mover múltiples items al carrito (seleccionados)
+        Route::post('/move-multiple', [WishlistItemController::class, 'moveMultipleToCart']);
         // Reordenar items dentro de la lista
         Route::post('/reorder', [WishlistItemController::class, 'reorder']);
     });

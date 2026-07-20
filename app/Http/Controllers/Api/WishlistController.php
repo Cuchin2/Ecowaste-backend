@@ -186,13 +186,12 @@ class WishlistController extends Controller
         $user = auth()->user();
 
         DB::transaction(function () use ($user, $wishlist) {
-            $cart = Cart::firstOrCreate(
-                ['user_id' => $user->id],
-                ['session_id' => null]
-            );
+            // Cargar los items de la lista con sus SKU
+            $items = $wishlist->items()->with('sku')->get();
 
-            foreach ($wishlist->items as $item) {
-                $cartItem = CartItem::where('cart_id', $cart->id)
+            foreach ($items as $item) {
+                // Buscar si el SKU ya está en el carrito del usuario
+                $cartItem = CartItem::where('user_id', $user->id)
                     ->where('product_sku_id', $item->product_sku_id)
                     ->first();
 
@@ -201,14 +200,14 @@ class WishlistController extends Controller
                     $cartItem->save();
                 } else {
                     CartItem::create([
-                        'cart_id'         => $cart->id,
+                        'user_id'         => $user->id,
                         'product_sku_id'  => $item->product_sku_id,
                         'quantity'        => $item->quantity,
-                        'price_at_add'    => $item->sku->sell_price ?? 0,
                     ]);
                 }
             }
 
+            // Eliminar todos los items de la wishlist
             $wishlist->items()->delete();
         });
 
