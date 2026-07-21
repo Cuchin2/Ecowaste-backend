@@ -33,6 +33,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $products = Product::with(['category', 'brand'])
+            ->search($request->search) 
             ->orderBy('order')
             ->orderBy('name')
             ->paginate($request->get('per_page', 15));

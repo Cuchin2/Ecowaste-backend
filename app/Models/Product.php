@@ -98,4 +98,20 @@ class Product extends Model
     {
         return 'slug';
     }
+    public function scopeSearch($query, $searchTerm)
+    {
+        if (empty($searchTerm)) {
+            return $query;
+        }
+
+        // Eliminar tildes y pasar a minúsculas (para comparación)
+        $normalized = strtolower(iconv('UTF-8', 'ASCII//TRANSLIT', $searchTerm));
+
+        return $query->where(function ($q) use ($normalized) {
+            $q->whereRaw('LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(name, "á", "a"), "é", "e"), "í", "i"), "ó", "o"), "ú", "u")) LIKE ?', ["%{$normalized}%"])
+            ->orWhereHas('brand', function ($brandQuery) use ($normalized) {
+                $brandQuery->whereRaw('LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(name, "á", "a"), "é", "e"), "í", "i"), "ó", "o"), "ú", "u")) LIKE ?', ["%{$normalized}%"]);
+            });
+        });
+    }
 }
