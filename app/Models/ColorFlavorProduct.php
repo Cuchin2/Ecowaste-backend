@@ -29,4 +29,9 @@ class ColorFlavorProduct extends Pivot
         return $this->belongsToMany(Trace::class, 'variant_traces', 'color_flavor_product_id', 'trace_id')
                     ->withTimestamps();
     }
+    public function octogons()
+    {
+        return $this->belongsToMany(Trace::class, 'variant_octogons', 'color_flavor_product_id', 'octogon_id')
+                    ->withTimestamps();
+    }
 }
