@@ -4,6 +4,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Ingredient;
+use App\Models\Aptitude;
+use App\Models\Trace;
+use App\Models\Octogon;
 
 class ColorFlavorProduct extends Model
 {
