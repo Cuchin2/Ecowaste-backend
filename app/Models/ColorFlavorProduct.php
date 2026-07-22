@@ -24,7 +24,10 @@ class ColorFlavorProduct extends Pivot
     // Relación con ColorFlavor
     public function colorFlavor()
     {
-        return $this->belongsTo(ColorFlavor::class);
+            return $this->belongsToMany(ColorFlavor::class, 'color_flavor_product')
+                ->using(ColorFlavorProduct::class)
+                ->withPivot('id', 'order')
+                ->orderBy('color_flavor_product.order'); // 👈 especifica la tabla pivote
     }
 
     // ✅ Relaciones con las variantes (con withPivot)
