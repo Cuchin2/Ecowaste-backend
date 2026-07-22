@@ -100,20 +100,7 @@ public function show(Product $product)
 
     // Cargar relaciones anidadas del pivote con orden (ingredientes, aptitudes, trazas, octógonos)
     $product->colorFlavors->each(function ($colorFlavor) {
-        $colorFlavor->pivot->load([
-            'ingredients' => function ($query) {
-                $query->orderBy('order');
-            },
-            'aptitudes' => function ($query) {
-                $query->orderBy('order');
-            },
-            'traces' => function ($query) {
-                $query->orderBy('order');
-            },
-            'octogons' => function ($query) {
-                $query->orderBy('order');
-            }
-        ]);
+        $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces', 'octogons']);
     });
 
     return response()->json($this->format($product));

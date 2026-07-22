@@ -32,6 +32,7 @@ class ColorFlavorProduct extends Pivot
     {
         return $this->belongsToMany(Ingredient::class, 'variant_ingredients', 'color_flavor_product_id', 'ingredient_id')
                     ->withPivot('order')
+                    ->orderBy('order')
                     ->withTimestamps();
     }
 
@@ -39,6 +40,7 @@ class ColorFlavorProduct extends Pivot
     {
         return $this->belongsToMany(Aptitude::class, 'variant_aptitudes', 'color_flavor_product_id', 'aptitude_id')
                     ->withPivot('order')
+                    ->orderBy('order')
                     ->withTimestamps();
     }
 
@@ -46,6 +48,7 @@ class ColorFlavorProduct extends Pivot
     {
         return $this->belongsToMany(Trace::class, 'variant_traces', 'color_flavor_product_id', 'trace_id')
                     ->withPivot('order')
+                    ->orderBy('order')
                     ->withTimestamps();
     }
 
@@ -53,6 +56,7 @@ class ColorFlavorProduct extends Pivot
     {
         return $this->belongsToMany(Octogon::class, 'variant_octogons', 'color_flavor_product_id', 'octogon_id')
                     ->withPivot('order')
+                    ->orderBy('order')
                     ->withTimestamps();
     }
 }
