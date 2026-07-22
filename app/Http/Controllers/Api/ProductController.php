@@ -105,6 +105,10 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        return response()->json([
+            'message' => 'Datos recibidos',
+            'data' => $request->all()
+        ], 200);
         $data = $request->validate([
             'name'                => 'sometimes|string|max:255',
             'description'         => 'nullable|string',
