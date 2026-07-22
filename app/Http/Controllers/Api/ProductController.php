@@ -206,55 +206,60 @@ class ProductController extends Controller
         $this->syncSkus($product);
         // Procesar variantes (ingredientes, aptitudes, trazas, octógonos)
         if ($request->has('variants')) {
-          $pivots = ColorFlavorProduct::where('product_id', $product->id)->get()->keyBy('color_flavor_id');
+            $variantsData = json_decode($request->input('variants'), true);
+            if (!is_array($variantsData)) {
+                throw new \Exception('Formato de variantes inválido');
+            }
 
-                foreach ($variantsData as $variantData) {
-                    $colorFlavorId = $variantData['color_flavor_id'] ?? null;
-                    if (!$colorFlavorId || !isset($pivots[$colorFlavorId])) {
-                        continue;
-                    }
-                    $pivot = $pivots[$colorFlavorId];
+            $pivots = ColorFlavorProduct::where('product_id', $product->id)->get()->keyBy('color_flavor_id');
 
-                    // Ingredientes
-                    if (isset($variantData['ingredient_ids']) && is_array($variantData['ingredient_ids'])) {
-                        $synced = [];
-                        foreach ($variantData['ingredient_ids'] as $item) {
-                            $synced[$item['id']] = ['order' => $item['order']];
-                        }
-                        \Log::info('Syncing ingredients', $synced);
-                        $pivot->ingredients()->sync($synced);
-                    }
-
-                    // Aptitudes
-                    if (isset($variantData['aptitude_ids']) && is_array($variantData['aptitude_ids'])) {
-                        $synced = [];
-                        foreach ($variantData['aptitude_ids'] as $item) {
-                            $synced[$item['id']] = ['order' => $item['order']];
-                        }
-                        \Log::info('Syncing aptitudes', $synced);
-                        $pivot->aptitudes()->sync($synced);
-                    }
-
-                    // Trazas
-                    if (isset($variantData['trace_ids']) && is_array($variantData['trace_ids'])) {
-                        $synced = [];
-                        foreach ($variantData['trace_ids'] as $item) {
-                            $synced[$item['id']] = ['order' => $item['order']];
-                        }
-                        \Log::info('Syncing traces', $synced);
-                        $pivot->traces()->sync($synced);
-                    }
-
-                    // Octógonos
-                    if (isset($variantData['octogon_ids']) && is_array($variantData['octogon_ids'])) {
-                        $synced = [];
-                        foreach ($variantData['octogon_ids'] as $item) {
-                            $synced[$item['id']] = ['order' => $item['order']];
-                        }
-                        \Log::info('Syncing octogons', $synced);
-                        $pivot->octogons()->sync($synced);
-                    }
+            foreach ($variantsData as $variantData) {
+                $colorFlavorId = $variantData['color_flavor_id'] ?? null;
+                if (!$colorFlavorId || !isset($pivots[$colorFlavorId])) {
+                    continue;
                 }
+                $pivot = $pivots[$colorFlavorId];
+
+                // Ingredientes
+                if (isset($variantData['ingredient_ids']) && is_array($variantData['ingredient_ids'])) {
+                    $synced = [];
+                    foreach ($variantData['ingredient_ids'] as $item) {
+                        $synced[$item['id']] = ['order' => $item['order']];
+                    }
+                    \Log::info('Syncing ingredients', $synced);
+                    $pivot->ingredients()->sync($synced);
+                }
+
+                // Aptitudes
+                if (isset($variantData['aptitude_ids']) && is_array($variantData['aptitude_ids'])) {
+                    $synced = [];
+                    foreach ($variantData['aptitude_ids'] as $item) {
+                        $synced[$item['id']] = ['order' => $item['order']];
+                    }
+                    \Log::info('Syncing aptitudes', $synced);
+                    $pivot->aptitudes()->sync($synced);
+                }
+
+                // Trazas
+                if (isset($variantData['trace_ids']) && is_array($variantData['trace_ids'])) {
+                    $synced = [];
+                    foreach ($variantData['trace_ids'] as $item) {
+                        $synced[$item['id']] = ['order' => $item['order']];
+                    }
+                    \Log::info('Syncing traces', $synced);
+                    $pivot->traces()->sync($synced);
+                }
+
+                // Octógonos
+                if (isset($variantData['octogon_ids']) && is_array($variantData['octogon_ids'])) {
+                    $synced = [];
+                    foreach ($variantData['octogon_ids'] as $item) {
+                        $synced[$item['id']] = ['order' => $item['order']];
+                    }
+                    \Log::info('Syncing octogons', $synced);
+                    $pivot->octogons()->sync($synced);
+                }
+            }
         }
         //
             return response()->json($this->format($product->fresh()));
