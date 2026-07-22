@@ -37,19 +37,21 @@ class Product extends Model
 
     public function brand()
     {
-        return $this->belongsTo(Brand::class);
+        return $this->belongsTo(Brand::class)->orderBy('order');
     }
     public function tags()
     {
-        return $this->morphToMany(Tag::class, 'taggable');
+        return $this->morphToMany(Tag::class, 'taggable')->orderBy('order');
     }
+
     public function empaques()
     {
-        return $this->belongsToMany(Empaque::class, 'empaque_product');
+        return $this->belongsToMany(Empaque::class, 'empaque_product')->orderBy('order');
     }
+
     public function sizes()
     {
-        return $this->belongsToMany(Size::class, 'product_size');
+        return $this->belongsToMany(Size::class, 'product_size')->orderBy('order');
     }
     public function colorFlavors()
     {
