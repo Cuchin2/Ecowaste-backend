@@ -12,22 +12,13 @@ use App\Models\Octogon;
 class ColorFlavorProduct extends Pivot  
 {
     protected $table = 'color_flavor_product';
-
+    public $incrementing = true;
     protected $fillable = ['product_id', 'color_flavor_id', 'order'];
 
     // Relación con Product
     public function product()
     {
         return $this->belongsTo(Product::class);
-    }
-
-    // Relación con ColorFlavor
-    public function colorFlavor()
-    {
-            return $this->belongsToMany(ColorFlavor::class, 'color_flavor_product')
-                ->using(ColorFlavorProduct::class)
-                ->withPivot('id', 'order')
-                ->orderBy('color_flavor_product.order'); // 👈 especifica la tabla pivote
     }
 
     // ✅ Relaciones con las variantes (con withPivot)

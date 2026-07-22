@@ -58,7 +58,7 @@ class Product extends Model
         return $this->belongsToMany(ColorFlavor::class, 'color_flavor_product')
                     ->using(ColorFlavorProduct::class)   // modelo pivot personalizado
                     ->withPivot('id', 'order')           // incluir id y order del pivot
-                    ->orderBy('order');            // mantener ordenación
+                    ->orderBy('color_flavor_product.order', 'asc');           // mantener ordenación
     }
     public function skus()
     {

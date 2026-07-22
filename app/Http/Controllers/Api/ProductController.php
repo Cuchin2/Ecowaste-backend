@@ -80,9 +80,7 @@ public function show(Product $product)
         'tags',
         'empaques',
         'sizes',
-        'colorFlavors' => function ($query) {
-            $query->orderBy('color_flavor_product.order');
-        },
+        'colorFlavors',
         'skus',
         'skus.images'
     ]);
