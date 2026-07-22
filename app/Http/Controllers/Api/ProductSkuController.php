@@ -44,21 +44,21 @@ public function getByIds(Request $request)
 }
 public function show(Product $product)
 {
+    // 1. Cargar relaciones principales (❌ QUITAMOS 'octogons' de aquí)
     $product->load([
         'category',
         'brand',
         'tags',
         'empaques',
-        'octogons',
-        'colorFlavors',
         'sizes',
+        'colorFlavors', // El modelo Product ya aplica el orderBy('color_flavor_product.order')
         'skus' => function ($query) {
             $query->where('semaphore', true);
         },
         'skus.images'
     ]);
 
-    // Ordenar SKU
+    // 2. Ordenar SKU (Tu lógica original, está perfecta)
     $orderedColorIds = $product->colorFlavors->pluck('id')->toArray();
     $positionMap = array_flip($orderedColorIds);
 
@@ -71,12 +71,17 @@ public function show(Product $product)
 
     $product->setRelation('skus', $sortedSkus);
 
-    // Cargar relaciones anidadas del pivote
+    // 3. Cargar relaciones anidadas del pivote (✅ AGREGAMOS 'octogons' aquí)
     $product->colorFlavors->each(function ($colorFlavor) {
-        $colorFlavor->pivot->load(['ingredients', 'aptitudes', 'traces']);
+        $colorFlavor->pivot->load([
+            'ingredients', 
+            'aptitudes', 
+            'traces', 
+            'octogons' // 👈 ¡ESTE ES EL CAMBIO CLAVE!
+        ]);
     });
 
-    // ✅ Devuelve el producto sin formatear
+    // 4. Devuelve el producto
     return response()->json($product);
 }
 public function update(Request $request, $productId, ProductSku $sku)
