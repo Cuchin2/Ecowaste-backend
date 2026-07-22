@@ -51,10 +51,6 @@ class Product extends Model
     {
         return $this->belongsToMany(Size::class, 'product_size');
     }
-    public function octogons()
-    {
-        return $this->belongsToMany(Octogon::class, 'octogon_product');
-    }
     public function colorFlavors()
     {
         return $this->belongsToMany(ColorFlavor::class, 'color_flavor_product')
