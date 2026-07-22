@@ -105,10 +105,6 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
-        return response()->json([
-            'message' => 'Datos recibidos',
-            'data' => $request->all()
-        ], 200);
         $data = $request->validate([
             'name'                => 'sometimes|string|max:255',
             'description'         => 'nullable|string',
@@ -210,50 +206,61 @@ class ProductController extends Controller
         $this->syncSkus($product);
         // Procesar variantes (ingredientes, aptitudes, trazas, octógonos)
         if ($request->has('variants')) {
-            $variantsData = json_decode($request->input('variants'), true);
-            if (!is_array($variantsData)) {
-                throw new \Exception('Formato de variantes inválido');
-            }
+          $pivots = ColorFlavorProduct::where('product_id', $product->id)->get()->keyBy('color_flavor_id');
 
-            $pivots = ColorFlavorProduct::where('product_id', $product->id)->get()->keyBy('color_flavor_id');
+                foreach ($variantsData as $variantData) {
+                    $colorFlavorId = $variantData['color_flavor_id'] ?? null;
+                    if (!$colorFlavorId || !isset($pivots[$colorFlavorId])) {
+                        continue;
+                    }
+                    $pivot = $pivots[$colorFlavorId];
 
-            foreach ($variantsData as $variantData) {
-                $colorFlavorId = $variantData['color_flavor_id'] ?? null;
-                if (!$colorFlavorId || !isset($pivots[$colorFlavorId])) {
-                    continue;
-                }
-                $pivot = $pivots[$colorFlavorId];
+                    // Ingredientes
+                    if (isset($variantData['ingredient_ids']) && is_array($variantData['ingredient_ids'])) {
+                        $synced = [];
+                        foreach ($variantData['ingredient_ids'] as $item) {
+                            $synced[$item['id']] = ['order' => $item['order']];
+                        }
+                        \Log::info('Syncing ingredients', $synced);
+                        $pivot->ingredients()->sync($synced);
+                    }
 
-                // Sincronizar con orden
-                $relations = ['ingredients', 'aptitudes', 'traces', 'octogons'];
-                foreach ($relations as $rel) {
-                    $key = $rel . '_ids'; // ingredient_ids, aptitude_ids, etc.
-                    if (isset($variantData[$key]) && is_array($variantData[$key])) {
-                        $this->syncPivotRelation($pivot, $rel, $variantData[$key]);
+                    // Aptitudes
+                    if (isset($variantData['aptitude_ids']) && is_array($variantData['aptitude_ids'])) {
+                        $synced = [];
+                        foreach ($variantData['aptitude_ids'] as $item) {
+                            $synced[$item['id']] = ['order' => $item['order']];
+                        }
+                        \Log::info('Syncing aptitudes', $synced);
+                        $pivot->aptitudes()->sync($synced);
+                    }
+
+                    // Trazas
+                    if (isset($variantData['trace_ids']) && is_array($variantData['trace_ids'])) {
+                        $synced = [];
+                        foreach ($variantData['trace_ids'] as $item) {
+                            $synced[$item['id']] = ['order' => $item['order']];
+                        }
+                        \Log::info('Syncing traces', $synced);
+                        $pivot->traces()->sync($synced);
+                    }
+
+                    // Octógonos
+                    if (isset($variantData['octogon_ids']) && is_array($variantData['octogon_ids'])) {
+                        $synced = [];
+                        foreach ($variantData['octogon_ids'] as $item) {
+                            $synced[$item['id']] = ['order' => $item['order']];
+                        }
+                        \Log::info('Syncing octogons', $synced);
+                        $pivot->octogons()->sync($synced);
                     }
                 }
-            }
         }
         //
             return response()->json($this->format($product->fresh()));
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
         }
-    }
-    private function syncPivotRelation($pivot, string $relation, ?array $data): void
-    {
-        if (empty($data)) {
-            $pivot->$relation()->sync([]);
-            return;
-        }
-
-        $synced = [];
-        foreach ($data as $item) {
-            if (isset($item['id'], $item['order'])) {
-                $synced[$item['id']] = ['order' => (int) $item['order']];
-            }
-        }
-        $pivot->$relation()->sync($synced);
     }
     public function destroy(Product $product)
     {
