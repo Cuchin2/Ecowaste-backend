@@ -110,6 +110,7 @@ public function show(Product $product)
     {
         $data = $request->validate([
             'name'                => 'sometimes|string|max:255',
+            'slug' => 'sometimes|nullable|string|max:255|unique:products,slug,' . $product->id,
             'description'         => 'nullable|string',
             'state'               => 'sometimes|in:erase,public,programer,cancel',
             'category_id'         => 'nullable|exists:categories,id',
