@@ -487,7 +487,7 @@ public function shop(Request $request)
     return response()->json([
         'data' => $products,
         'total' => $products->count(),
-        'category_name'=>$category->name
+        'category_name'=>$category->name ?? null
     ]);
 }
 /**
