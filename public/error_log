@@ -1,2 +1,24 @@
 [05-Mar-2026 18:30:41 UTC] PHP Fatal error:  Constant expression contains invalid operations in /home/websimpc/ecowaste.websimp.com/app/Models/User.php on line 15
 [05-Mar-2026 18:30:52 UTC] PHP Fatal error:  Constant expression contains invalid operations in /home/websimpc/ecowaste.websimp.com/app/Models/User.php on line 15
+[13-May-2026 17:55:01 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 17:55:03 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 17:56:33 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 17:56:35 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 17:59:33 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 17:59:34 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:01:17 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:01:18 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:04:30 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:04:31 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:10:10 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:10:12 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:29:29 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:29:31 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:29:54 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:29:56 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:30:44 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:30:46 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:32:25 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[13-May-2026 18:32:27 UTC] PHP Fatal error:  Trait "App\Models\HasFactory" not found in /home/websimpc/ecowaste.websimp.com/app/Models/Brand.php on line 7
+[11-Jun-2026 18:06:37 UTC] PHP Fatal error:  A void function must not return a value in /home/websimpc/ecowaste.websimp.com/app/Http/Controllers/Api/ProductController.php on line 343
+[11-Jun-2026 18:06:38 UTC] PHP Fatal error:  A void function must not return a value in /home/websimpc/ecowaste.websimp.com/app/Http/Controllers/Api/ProductController.php on line 343
