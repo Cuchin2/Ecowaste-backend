@@ -19,7 +19,12 @@ class ColorFlavor extends Model
         'type',
         'order',
     ];
-
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            $model->order = static::max('order') + 1;
+        });
+    }
     protected $casts = [
         'order' => 'integer', 
     ];
@@ -28,6 +33,7 @@ class ColorFlavor extends Model
     {
         return $query->orderBy('order');
     }
+
         // Relación con el tipo
     public function type()
     {
