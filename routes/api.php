@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\ProductSkuImageController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\WishlistItemController ;
+use App\Http\Controllers\Api\ColorFlavorTypeController ;
 use App\Models\ProductSku;
 /**
  * RUTA PROTEGIDA POR SANCTUM
@@ -113,6 +114,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Color / Sabor
     Route::patch('/color-flavor/reorder', [ColorFlavorController::class, 'reorder']);
     Route::apiResource('color-flavor', ColorFlavorController::class);
+    Route::patch('color-flavor-types/reorder', [ColorFlavorTypeController::class, 'reorder']);
+    Route::apiResource('color-flavor-types', ColorFlavorTypeController::class)->only(['index', 'store', 'update', 'destroy']);
+
     // Empaques
     Route::patch('/empaques/reorder', [EmpaqueController::class, 'reorder']);
     Route::apiResource('empaques', EmpaqueController::class);
