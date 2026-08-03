@@ -32,7 +32,7 @@ class ColorFlavorController extends Controller
                 'regex:/^[A-Z0-9]{2}$/',
                 Rule::unique('color_flavor', 'code')
             ],
-            'type' => 'required|in:color,sabor',
+            'color_flavor_type_id' => 'required|exists:color_flavor_types,id', // 👈 NUEVO
         ]);
 
         DB::beginTransaction();
@@ -51,35 +51,37 @@ class ColorFlavorController extends Controller
         return response()->json($colorFlavor);
     }
 
-    public function update(Request $request, ColorFlavor $colorFlavor)
-    {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:100',
-            'hex'  => [
-                'sometimes',
-                'string',
-                'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'
-            ],
-            'code' => [
-                'sometimes',
-                'string',
-                'size:2',
-                'regex:/^[A-Z0-9]{2}$/',
-                Rule::unique('color_flavor', 'code')->ignore($colorFlavor->id)
-            ],
-            'type' => 'sometimes|in:color,sabor',
-        ]);
+public function update(Request $request, $id)
+{
+    $colorFlavor = ColorFlavor::findOrFail($id);
 
-        DB::beginTransaction();
-        try {
-            $colorFlavor->update($validated);
-            DB::commit();
-            return response()->json($colorFlavor->fresh());
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
-        }
+    $validated = $request->validate([
+        'name' => 'sometimes|string|max:100',
+        'hex'  => [
+            'sometimes',
+            'string',
+            'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'
+        ],
+        'code' => [
+            'sometimes',
+            'string',
+            'size:2',
+            'regex:/^[A-Z0-9]{2}$/',
+            Rule::unique('color_flavor', 'code')->ignore($id)
+        ],
+        'color_flavor_type_id' => 'sometimes|exists:color_flavor_types,id', // 👈 NUEVO
+    ]);
+
+    DB::beginTransaction();
+    try {
+        $colorFlavor->update($validated);
+        DB::commit();
+        return response()->json($colorFlavor);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
     }
+}
 
     public function destroy(ColorFlavor $colorFlavor)
     {
