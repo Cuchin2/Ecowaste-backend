@@ -15,12 +15,12 @@ class ColorFlavor extends Model
         'name',
         'hex',
         'code',
+        'color_flavor_type_id',
         'type',
         'order',
     ];
 
     protected $casts = [
-        'type' => 'string',
         'order' => 'integer', 
     ];
         // Scope para ordenar por defecto
