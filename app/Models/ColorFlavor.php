@@ -28,6 +28,11 @@ class ColorFlavor extends Model
     {
         return $query->orderBy('order');
     }
+        // Relación con el tipo
+    public function type()
+    {
+        return $this->belongsTo(ColorFlavorType::class, 'color_flavor_type_id');
+    }
     public function products()
     {
         return $this->belongsToMany(Product::class, 'color_flavor_product')
