@@ -51,7 +51,7 @@ public function show(Product $product)
         'tags',
         'empaques',
         'sizes',
-        'colorFlavors', // El modelo Product ya aplica el orderBy('color_flavor_product.order')
+        'colorFlavors.type', // El modelo Product ya aplica el orderBy('color_flavor_product.order')
         'skus' => function ($query) {
             $query->where('semaphore', true);
         },
