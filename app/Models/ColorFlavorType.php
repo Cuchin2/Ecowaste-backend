@@ -11,6 +11,10 @@ class ColorFlavorType extends Model
 
     protected $fillable = ['name', 'order'];
 
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('order', 'asc');
+    }
     public function colorFlavors()
     {
         return $this->hasMany(ColorFlavor::class);

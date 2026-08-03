@@ -20,6 +20,11 @@ class ColorFlavorTypeController extends Controller
             'name' => 'required|string|unique:color_flavor_types',
             'order' => 'nullable|integer',
         ]);
+        // Si no se envía order, asignar el último + 1
+        if (!isset($data['order'])) {
+            $maxOrder = ColorFlavorType::max('order') ?? 0;
+            $data['order'] = $maxOrder + 1;
+        }
         return ColorFlavorType::create($data);
     }
 
