@@ -232,7 +232,7 @@ Route::get('/categoriespublic', [CategoryController::class, 'publicIndex']);
 Route::get('categories-flat', [CategoryController::class, 'flat']); // opcional
 Route::get('traces', [TraceController::class, 'index']);
 Route::get('aptitudes', [AptitudeController::class, 'index']);
-Route::get('octogons', OctogonController::class,'index');
+Route::get('octogons', [OctogonController::class,'index']);
 Route::get('ingredients', [IngredientController::class, 'index']);
 Route::get('/product-skus', [ProductSkuController::class, 'getByIds']);
 /* Route::get('/pruebas/backend', [PruebaController::class, 'index']); */
