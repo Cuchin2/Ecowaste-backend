@@ -12,28 +12,39 @@ class LocationSeeder extends Seeder
 {
     public function run(): void
     {
+        // 1. Forzamos la memoria a 1GB para estar 100% seguros
+        ini_set('memory_limit', '1024M');
+        
         DB::connection()->disableQueryLog();
         
-        $jsonPath = database_path('seeders/data/countries+states+cities.json');
-        
-        if (!file_exists($jsonPath)) {
-            $this->command->error('❌ Archivo JSON no encontrado. Asegúrate de guardarlo en: database/seeders/data/');
-            return;
+        $dataPath = database_path('seeders/data');
+
+        // 2. Verificamos que los 3 archivos existan
+        $files = ['countries.json', 'states.json', 'cities.json'];
+        foreach ($files as $file) {
+            if (!file_exists("$dataPath/$file")) {
+                $this->command->error("❌ Falta el archivo: $dataPath/$file");
+                return;
+            }
         }
 
-        $this->command->info('⏳ Leyendo archivo JSON... (esto puede tomar unos segundos)');
-        $data = json_decode(file_get_contents($jsonPath), true);
-
-        $this->seedCountries($data);
-        $this->seedStates($data);
-        $this->seedCities($data);
+        $this->command->info('⏳ Procesando Countries...');
+        $this->seedCountries("$dataPath/countries.json");
+        
+        $this->command->info('⏳ Procesando States...');
+        $this->seedStates("$dataPath/states.json");
+        
+        $this->command->info('⏳ Procesando Cities (esto puede tomar 1-2 minutos)...');
+        $this->seedCities("$dataPath/cities.json");
         
         $this->command->info('✅ ¡Locations seeded successfully!');
     }
 
-    private function seedCountries(array $data): void
+    private function seedCountries(string $path): void
     {
+        $data = json_decode(file_get_contents($path), true);
         $countries = [];
+        
         foreach ($data as $item) {
             $countries[] = [
                 'id' => $item['id'],
@@ -52,75 +63,57 @@ class LocationSeeder extends Seeder
             ];
         }
 
-        // Insertamos en lotes de 1000 para no saturar la memoria
         foreach (array_chunk($countries, 1000) as $chunk) {
             Country::insert($chunk);
         }
-        
         $this->command->info('📍 Countries insertados: ' . count($countries));
     }
 
-    private function seedStates(array $data): void
+    private function seedStates(string $path): void
     {
+        $data = json_decode(file_get_contents($path), true);
         $states = [];
-        foreach ($data as $country) {
-            if (empty($country['states'])) {
-                continue;
-            }
-            
-            foreach ($country['states'] as $state) {
-                $states[] = [
-                    'id' => $state['id'],
-                    'country_id' => $country['id'],
-                    'iso2' => $state['state_code'] ?? null,
-                    'name' => $state['name'],
-                    'type' => $state['type'] ?? null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
+        
+        foreach ($data as $item) {
+            $states[] = [
+                'id' => $item['id'],
+                'country_id' => $item['country_id'],
+                'iso2' => $item['state_code'] ?? null,
+                'name' => $item['name'],
+                'type' => $item['type'] ?? null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
         }
 
         foreach (array_chunk($states, 1000) as $chunk) {
             State::insert($chunk);
         }
-        
         $this->command->info('📍 States insertados: ' . count($states));
     }
 
-    private function seedCities(array $data): void
+    private function seedCities(string $path): void
     {
+        $data = json_decode(file_get_contents($path), true);
         $cities = [];
-        foreach ($data as $country) {
-            if (empty($country['states'])) {
-                continue;
-            }
-            
-            foreach ($country['states'] as $state) {
-                if (empty($state['cities'])) {
-                    continue;
-                }
-                
-                foreach ($state['cities'] as $city) {
-                    $cities[] = [
-                        'id' => $city['id'],
-                        'country_id' => $country['id'],
-                        'state_id' => $state['id'],
-                        'name' => $city['name'],
-                        'latitude' => $city['latitude'] ?? null,
-                        'longitude' => $city['longitude'] ?? null,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-            }
+        
+        foreach ($data as $item) {
+            $cities[] = [
+                'id' => $item['id'],
+                'country_id' => $item['country_id'],
+                'state_id' => $item['state_id'],
+                'name' => $item['name'],
+                'latitude' => $item['latitude'] ?? null,
+                'longitude' => $item['longitude'] ?? null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
         }
 
-        // Las ciudades son muchas (~150,000), los chunks de 1000 son vitales aquí
+        // Chunk de 1000 para no saturar la memoria de MySQL
         foreach (array_chunk($cities, 1000) as $chunk) {
             City::insert($chunk);
         }
-        
         $this->command->info('📍 Cities insertadas: ' . count($cities));
     }
 }
