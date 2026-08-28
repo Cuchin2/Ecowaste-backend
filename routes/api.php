@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\WishlistItemController ;
 use App\Http\Controllers\Api\ColorFlavorTypeController ;
+use App\Http\Controllers\Api\LocationController;
 use App\Models\ProductSku;
 /**
  * RUTA PROTEGIDA POR SANCTUM
@@ -239,3 +240,9 @@ Route::get('/product-skus', [ProductSkuController::class, 'getByIds']);
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
 }); */
+/* Rutas para las localidades */
+Route::prefix('locations')->group(function () {
+    Route::get('/countries', [LocationController::class, 'countries']);
+    Route::get('/states', [LocationController::class, 'states']);
+    Route::get('/cities', [LocationController::class, 'cities']);
+});
