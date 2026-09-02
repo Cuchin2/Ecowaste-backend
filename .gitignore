@@ -23,3 +23,5 @@ yarn-error.log
 /.vscode
 /.zed
 error_log
+storage/tmp/
+storage/tmp/*
