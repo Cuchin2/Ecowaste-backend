@@ -3,69 +3,146 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Country;
-use App\Models\State;
-use App\Models\City;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 
 class LocationController extends Controller
 {
-    /**
-     * GET /api/locations/countries
-     */
-    public function countries(): JsonResponse
-    {
-        // Cacheamos por 24 horas (86400 segundos). Esta data casi no cambia.
-        $countries = Cache::remember('api.countries.all', 86400, function () {
-            return Country::select('id', 'iso2', 'name', 'flag', 'currency', 'phone_code')
-                ->orderBy('name')
-                ->get();
-        });
+    protected $username;
 
-        return response()->json($countries);
+    public function __construct()
+    {
+        $this->username = config('services.geonames.username', 'demo'); // Usa 'demo' para pruebas
     }
 
-    /**
-     * GET /api/locations/states?country_id=173
-     */
-    public function states(Request $request): JsonResponse
+    // 1️⃣ Obtener todos los países
+    public function getCountries()
     {
-        $request->validate([
-            'country_id' => 'required|integer|exists:countries,id'
-        ]);
+        return Cache::remember('geonames_countries', 86400, function () {
+            $response = Http::get("http://api.geonames.org/countryInfoJSON", [
+                'username' => $this->username,
+            ]);
 
-        $countryId = $request->input('country_id');
+            if ($response->failed()) {
+                return response()->json(['error' => 'Error fetching countries'], 500);
+            }
 
-        $states = Cache::remember("api.states.country.{$countryId}", 86400, function () use ($countryId) {
-            return State::where('country_id', $countryId)
-                ->select('id', 'name', 'iso2', 'type')
-                ->orderBy('name')
-                ->get();
+            $data = $response->json();
+            $countries = collect($data['geonames'] ?? [])->map(fn($c) => [
+                'geonameId' => $c['geonameId'],
+                'iso2' => $c['countryCode'],
+                'name' => $c['countryName'],
+                'flag' => $c['countryCode'] ?? null,
+                'currency' => $c['currencyCode'] ?? null,
+                'phone_code' => $c['phone'] ?? null,
+            ]);
+
+            return $countries;
         });
-
-        return response()->json($states);
     }
 
-    /**
-     * GET /api/locations/cities?state_id=3695
-     */
-    public function cities(Request $request): JsonResponse
+    // 2️⃣ Obtener estados/provincias de un país (por iso2)
+    public function getStates($countryCode)
     {
-        $request->validate([
-            'state_id' => 'required|integer|exists:states,id'
-        ]);
+        $cacheKey = "geonames_states_{$countryCode}";
 
-        $stateId = $request->input('state_id');
+        return Cache::remember($cacheKey, 86400, function () use ($countryCode) {
+            // 1. Obtener el geonameId del país
+            $countryId = $this->getCountryId($countryCode);
+            if (!$countryId) {
+                return response()->json(['error' => 'Country not found'], 404);
+            }
 
-        $cities = Cache::remember("api.cities.state.{$stateId}", 86400, function () use ($stateId) {
-            return City::where('state_id', $stateId)
-                ->select('id', 'name')
-                ->orderBy('name')
-                ->get();
+            // 2. Obtener hijos del país (divisiones administrativas nivel 1)
+            $response = Http::get("http://api.geonames.org/childrenJSON", [
+                'geonameId' => $countryId,
+                'username' => $this->username,
+            ]);
+
+            if ($response->failed()) {
+                return response()->json(['error' => 'Error fetching states'], 500);
+            }
+
+            $data = $response->json();
+            $states = collect($data['geonames'] ?? [])->map(fn($s) => [
+                'geonameId' => $s['geonameId'],
+                'name' => $s['name'] ?? $s['toponymName'],
+                'iso2' => $s['adminCode1'] ?? null,
+                'type' => $s['fcodeName'] ?? null,
+            ]);
+
+            return $states;
+        });
+    }
+
+    // 3️⃣ Obtener ciudades de un estado/provincia
+    public function getCities($stateId)
+    {
+        $cacheKey = "geonames_cities_{$stateId}";
+
+        return Cache::remember($cacheKey, 86400, function () use ($stateId) {
+            $response = Http::get("http://api.geonames.org/childrenJSON", [
+                'geonameId' => $stateId,
+                'username' => $this->username,
+            ]);
+
+            if ($response->failed()) {
+                return response()->json(['error' => 'Error fetching cities'], 500);
+            }
+
+            $data = $response->json();
+            $cities = collect($data['geonames'] ?? [])->map(fn($c) => [
+                'geonameId' => $c['geonameId'],
+                'name' => $c['name'] ?? $c['toponymName'],
+            ]);
+
+            return $cities;
+        });
+    }
+
+    // 4️⃣ Obtener distritos de una ciudad (nivel 4)
+    public function getDistricts($cityId)
+    {
+        $cacheKey = "geonames_districts_{$cityId}";
+
+        return Cache::remember($cacheKey, 86400, function () use ($cityId) {
+            // Para distritos, también usamos children (puede ser ADM2, ADM3, etc.)
+            $response = Http::get("http://api.geonames.org/childrenJSON", [
+                'geonameId' => $cityId,
+                'username' => $this->username,
+            ]);
+
+            if ($response->failed()) {
+                return response()->json(['error' => 'Error fetching districts'], 500);
+            }
+
+            $data = $response->json();
+            $districts = collect($data['geonames'] ?? [])->map(fn($d) => [
+                'geonameId' => $d['geonameId'],
+                'name' => $d['name'] ?? $d['toponymName'],
+            ]);
+
+            return $districts;
+        });
+    }
+
+    // 🛠️ Helper: obtener geonameId de un país por código ISO
+    private function getCountryId($countryCode)
+    {
+        $countries = Cache::remember('geonames_countries_iso', 86400, function () {
+            $response = Http::get("http://api.geonames.org/countryInfoJSON", [
+                'username' => $this->username,
+            ]);
+
+            if ($response->failed()) {
+                return collect();
+            }
+
+            $data = $response->json();
+            return collect($data['geonames'] ?? [])->keyBy('countryCode');
         });
 
-        return response()->json($cities);
+        return $countries->get(strtoupper($countryCode))['geonameId'] ?? null;
     }
 }

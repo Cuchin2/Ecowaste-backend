@@ -242,7 +242,8 @@ Route::get('/product-skus', [ProductSkuController::class, 'getByIds']);
 }); */
 /* Rutas para las localidades */
 Route::prefix('locations')->group(function () {
-    Route::get('/countries', [LocationController::class, 'countries']);
-    Route::get('/states', [LocationController::class, 'states']);
-    Route::get('/cities', [LocationController::class, 'cities']);
+    Route::get('/countries', [LocationController::class, 'getCountries']);
+    Route::get('/states/{countryCode}', [LocationController::class, 'getStates']);
+    Route::get('/cities/{stateId}', [LocationController::class, 'getCities']);
+    Route::get('/districts/{cityId}', [LocationController::class, 'getDistricts']);
 });
