@@ -13,30 +13,28 @@ class LocationController extends Controller
 
     public function __construct()
     {
-        // ⚠️ IMPORTANTE: Regístrate gratis en https://www.geonames.org/login para obtener tu propio username.
-        // El usuario 'demo' tiene límites de solicitudes muy estrictos (aprox. 2000/día) y suele fallar en producción.
-        $this->username = config('services.geonames.username', 'demo'); 
+        $this->username = config('services.geonames.username', 'demo');
     }
 
     // 1️⃣ Obtener todos los países en español
     public function getCountries()
     {
-        // Se agrega '_es' a la clave de caché para evitar colisiones con datos en inglés
         return Cache::remember('geonames_countries_es', 86400, function () {
-            $response = Http::get("https://api.geonames.org/countryInfoJSON", [
+            // ⚠️ Volvemos a HTTP para evitar el error de certificado SSL de tu servidor
+            $response = Http::get("http://api.geonames.org/countryInfoJSON", [
                 'username' => $this->username,
-                'lang'     => 'es', // 🇪🇸 Fuerza la respuesta en español
+                'lang'     => 'es', 
             ]);
 
             if ($response->failed()) {
-                return response()->json(['error' => 'Error al obtener los países'], 500);
+                return response()->json(['error' => 'Error al obtener los países: ' . $response->body()], 500);
             }
 
             $data = $response->json();
             $countries = collect($data['geonames'] ?? [])->map(fn($c) => [
                 'geonameId'  => $c['geonameId'],
                 'iso2'       => $c['countryCode'],
-                'name'       => $c['countryName'], // Vendrá en español gracias a 'lang' => 'es'
+                'name'       => $c['countryName'],
                 'flag'       => $c['countryCode'] ?? null,
                 'currency'   => $c['currencyCode'] ?? null,
                 'phone_code' => $c['phone'] ?? null,
@@ -57,20 +55,20 @@ class LocationController extends Controller
                 return response()->json(['error' => 'País no encontrado'], 404);
             }
 
-            $response = Http::get("https://api.geonames.org/childrenJSON", [
+            $response = Http::get("http://api.geonames.org/childrenJSON", [
                 'geonameId' => $countryId,
                 'username'  => $this->username,
-                'lang'      => 'es', // 🇪🇸 Fuerza la respuesta en español
+                'lang'      => 'es',
             ]);
 
             if ($response->failed()) {
-                return response()->json(['error' => 'Error al obtener los estados/provincias'], 500);
+                return response()->json(['error' => 'Error al obtener los estados: ' . $response->body()], 500);
             }
 
             $data = $response->json();
             $states = collect($data['geonames'] ?? [])->map(fn($s) => [
                 'geonameId' => $s['geonameId'],
-                'name'      => $s['name'] ?? $s['toponymName'], // Nombre en español
+                'name'      => $s['name'] ?? $s['toponymName'],
                 'iso2'      => $s['adminCode1'] ?? null,
                 'type'      => $s['fcodeName'] ?? null,
             ]);
@@ -85,20 +83,20 @@ class LocationController extends Controller
         $cacheKey = "geonames_cities_{$stateId}_es";
 
         return Cache::remember($cacheKey, 86400, function () use ($stateId) {
-            $response = Http::get("https://api.geonames.org/childrenJSON", [
+            $response = Http::get("http://api.geonames.org/childrenJSON", [
                 'geonameId' => $stateId,
                 'username'  => $this->username,
-                'lang'      => 'es', // 🇪🇸 Fuerza la respuesta en español
+                'lang'      => 'es',
             ]);
 
             if ($response->failed()) {
-                return response()->json(['error' => 'Error al obtener las ciudades'], 500);
+                return response()->json(['error' => 'Error al obtener las ciudades: ' . $response->body()], 500);
             }
 
             $data = $response->json();
             $cities = collect($data['geonames'] ?? [])->map(fn($c) => [
                 'geonameId' => $c['geonameId'],
-                'name'      => $c['name'] ?? $c['toponymName'], // Nombre en español
+                'name'      => $c['name'] ?? $c['toponymName'],
             ]);
 
             return $cities;
@@ -111,20 +109,20 @@ class LocationController extends Controller
         $cacheKey = "geonames_districts_{$cityId}_es";
 
         return Cache::remember($cacheKey, 86400, function () use ($cityId) {
-            $response = Http::get("https://api.geonames.org/childrenJSON", [
+            $response = Http::get("http://api.geonames.org/childrenJSON", [
                 'geonameId' => $cityId,
                 'username'  => $this->username,
-                'lang'      => 'es', // 🇪🇸 Fuerza la respuesta en español
+                'lang'      => 'es',
             ]);
 
             if ($response->failed()) {
-                return response()->json(['error' => 'Error al obtener los distritos'], 500);
+                return response()->json(['error' => 'Error al obtener los distritos: ' . $response->body()], 500);
             }
 
             $data = $response->json();
             $districts = collect($data['geonames'] ?? [])->map(fn($d) => [
                 'geonameId' => $d['geonameId'],
-                'name'      => $d['name'] ?? $d['toponymName'], // Nombre en español
+                'name'      => $d['name'] ?? $d['toponymName'],
             ]);
 
             return $districts;
@@ -137,7 +135,7 @@ class LocationController extends Controller
         $cacheKey = 'geonames_countries_iso_es';
 
         return Cache::remember($cacheKey, 86400, function () {
-            $response = Http::get("https://api.geonames.org/countryInfoJSON", [
+            $response = Http::get("http://api.geonames.org/countryInfoJSON", [
                 'username' => $this->username,
                 'lang'     => 'es',
             ]);
