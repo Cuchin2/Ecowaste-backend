@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\WishlistItemController ;
 use App\Http\Controllers\Api\ColorFlavorTypeController ;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\CheckoutController;
 use App\Models\ProductSku;
 /**
  * RUTA PROTEGIDA POR SANCTUM
