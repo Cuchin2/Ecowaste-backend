@@ -21,11 +21,15 @@ class SaleOrder extends Model
         'phone',
         'email',
         'country',
+        'country_code', // 👈 NUEVO
         'address',
         'reference',
         'city',
+        'city_id',      // 👈 NUEVO
         'state',
+        'state_id',     // 👈 NUEVO
         'district',
+        'district_id',  // 👈 NUEVO
         'zip_code',
         'currency',
         'delivery',

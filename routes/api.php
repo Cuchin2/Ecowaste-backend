@@ -230,6 +230,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // RUTAS - DEL CHECKOUT
     // ============================================================
     Route::post('/checkout', [CheckoutController::class, 'create']);
+    Route::get('/current', [CheckoutController::class, 'current']);
 });
 // Rutas públicas
 Route::get('/products-shop/{product}', [ProductSkuController::class, 'show']);

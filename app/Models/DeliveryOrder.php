@@ -15,9 +15,13 @@ class DeliveryOrder extends Model
         'address',
         'reference',
         'country',
+        'country_code', // 👈 NUEVO
         'city',
+        'city_id',      // 👈 NUEVO
         'state',
+        'state_id',     // 👈 NUEVO
         'district',
+        'district_id',  // 👈 NUEVO
         // Otros atributos que desees agregar
     ];
     public function saleOrder() : BelongsTo
