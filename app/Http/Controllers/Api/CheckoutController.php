@@ -12,15 +12,12 @@ class CheckoutController extends Controller
 {
     public function create(CheckoutRequest $request)
     {
-        // DB::transaction garantiza que si falla la creación de DeliveryOrder, 
-        // se revierta la creación de SaleOrder (integridad de datos).
         $orderId = DB::transaction(function () use ($request) {
             
-            // 1. Crear/Actualizar la Orden de Venta
             $saleOrder = SaleOrder::updateOrCreate(
                 [
                     'status' => 'CREATE', 
-                    'user_id' => $request->user_id ?? auth()->id() // Fallback al usuario autenticado si no viene en payload
+                    'user_id' => $request->user_id ?? auth()->id()
                 ],
                 [
                     'name' => $request->name,
@@ -43,9 +40,6 @@ class CheckoutController extends Controller
                 ]
             );
 
-            // 2. Crear/Actualizar la Orden de Entrega
-            // Gracias al CheckoutRequest, si $request->otra === 'true', 
-            // estamos 100% seguros de que name2, address2, etc., existen y son válidos.
             if ($request->otra === 'true') {
                 DeliveryOrder::updateOrCreate(
                     ['order_id' => $saleOrder->id],
@@ -79,11 +73,11 @@ class CheckoutController extends Controller
             return $saleOrder->id;
         });
 
-        // 3. Respuesta exitosa para React
+        // 👇 Respuesta limpia: solo datos, sin URLs de redirección
         return response()->json([
             'success' => true,
             'order_id' => $orderId,
-            'redirect_url' => route('web.shop.checkout.shipping', ['id' => $orderId])
+            'message' => 'Orden creada exitosamente',
         ], 200);
     }
 }
