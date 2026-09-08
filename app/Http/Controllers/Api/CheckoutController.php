@@ -3,23 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\CheckoutRequest; // 👈 Asegúrate de que este Form Request exista
-use App\Models\SaleOrder;               // 👈 Importación necesaria
-use App\Models\DeliveryOrder;           // 👈 Importación necesaria
-use Illuminate\Support\Facades\DB;      // 👈 Para la transacción
+use App\Http\Requests\CheckoutRequest;
+use App\Models\SaleOrder;
+use App\Models\DeliveryOrder;
+use Illuminate\Support\Facades\DB;
 
 class CheckoutController extends Controller
 {
     public function create(CheckoutRequest $request)
     {
-        // 👇 Envolver en transacción para garantizar integridad de datos
-        $result = DB::transaction(function () use ($request) {
+        // DB::transaction garantiza que si falla la creación de DeliveryOrder, 
+        // se revierta la creación de SaleOrder (integridad de datos).
+        $orderId = DB::transaction(function () use ($request) {
             
-            // 1. Crear o Actualizar la Orden de Venta
+            // 1. Crear/Actualizar la Orden de Venta
             $saleOrder = SaleOrder::updateOrCreate(
                 [
                     'status' => 'CREATE', 
-                    'user_id' => $request->user_id // Asegúrate que el frontend o el auth lo provean
+                    'user_id' => $request->user_id ?? auth()->id() // Fallback al usuario autenticado si no viene en payload
                 ],
                 [
                     'name' => $request->name,
@@ -37,15 +38,15 @@ class CheckoutController extends Controller
                     'district' => $request->district,
                     'zip_code' => $request->zip_code,
                     'total' => $request->total,
-                    // ⚠️ Nota: session() en APIs puede ser inestable. 
-                    // Mejor si el frontend envía 'currency' o 'location' en el payload.
-                    'currency' => session('location') == 'PE' ? 'PEN' : 'USD', 
-                    'delivery' => $request->otra == 'true' ? 1 : 0,
+                    'currency' => session('location') == 'PE' ? 'PEN' : 'USD',
+                    'delivery' => $request->otra === 'true' ? 1 : 0,
                 ]
             );
 
-            // 2. Crear o Actualizar la Orden de Entrega
-            if ($request->otra == 'true') {
+            // 2. Crear/Actualizar la Orden de Entrega
+            // Gracias al CheckoutRequest, si $request->otra === 'true', 
+            // estamos 100% seguros de que name2, address2, etc., existen y son válidos.
+            if ($request->otra === 'true') {
                 DeliveryOrder::updateOrCreate(
                     ['order_id' => $saleOrder->id],
                     [
@@ -60,7 +61,6 @@ class CheckoutController extends Controller
                     ]
                 );
             } else {
-                // Si es la misma dirección, duplicamos los datos de facturación en entrega
                 DeliveryOrder::updateOrCreate(
                     ['order_id' => $saleOrder->id],
                     [
@@ -79,11 +79,11 @@ class CheckoutController extends Controller
             return $saleOrder->id;
         });
 
-        // 3. Respuesta JSON para el frontend de React
+        // 3. Respuesta exitosa para React
         return response()->json([
             'success' => true,
-            'order_id' => $result,
-            'redirect_url' => route('web.shop.checkout.shipping', ['id' => $result])
-        ], 200); // Código 200 OK
+            'order_id' => $orderId,
+            'redirect_url' => route('web.shop.checkout.shipping', ['id' => $orderId])
+        ], 200);
     }
 }
