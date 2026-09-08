@@ -34,7 +34,7 @@ class SaleOrder extends Model
         'currency',
         'delivery',
     ];
-    public function deliveryOrders(): HasOne {
+    public function deliveryOrder(): HasOne {
 
         return $this->hasOne(DeliveryOrder::class,'order_id');
     }

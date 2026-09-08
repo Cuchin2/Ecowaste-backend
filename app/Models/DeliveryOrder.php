@@ -24,8 +24,8 @@ class DeliveryOrder extends Model
         'district_id',  // 👈 NUEVO
         // Otros atributos que desees agregar
     ];
-    public function saleOrder() : BelongsTo
+    public function saleOrder(): BelongsTo
     {
-        return $this->BelongsTo(SaleOrder::class,'order_id');
+        return $this->belongsTo(SaleOrder::class, 'order_id');
     }
 }
