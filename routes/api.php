@@ -224,6 +224,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [WishlistShareController::class, 'store']);
         Route::delete('/{share}', [WishlistShareController::class, 'destroy']);
     });
+
+    // =============================================================
+    // RUTAS - DEL CHECKOUT
+    // ============================================================
+    Route::post('/checkout', [CheckoutController::class, 'create']);
 });
 // Rutas públicas
 Route::get('/products-shop/{product}', [ProductSkuController::class, 'show']);
