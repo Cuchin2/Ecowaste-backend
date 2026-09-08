@@ -48,14 +48,14 @@ class CheckoutRequest extends FormRequest
             'otra' => 'required|in:true,false', // Viene como string desde el frontend
 
             // --- DATOS DE ENVÍO (Condicionales: solo si 'otra' == 'true') ---
-            'name2' => 'required_if:otra,true|string|max:255',
-            'last_name2' => 'required_if:otra,true|string|max:255',
-            'address2' => 'required_if:otra,true|string|max:255',
-            'reference2' => 'nullable|string|max:255',
-            'country2' => 'required_if:otra,true|string',
-            'state2' => 'required_if:otra,true|string',
-            'city2' => 'required_if:otra,true|string',
-            'district2' => 'required_if:otra,true|string',
+            'name2'      => 'nullable|required_if:otra,true|string|max:255',
+            'last_name2' => 'nullable|required_if:otra,true|string|max:255',
+            'address2'   => 'nullable|required_if:otra,true|string|max:255',
+            'reference2' => 'nullable|string|max:255', // Este siempre es opcional
+            'country2'   => 'nullable|required_if:otra,true|string',
+            'state2'     => 'nullable|required_if:otra,true|string',
+            'city2'      => 'nullable|required_if:otra,true|string',
+            'district2'  => 'nullable|required_if:otra,true|string',
         ];
     }
 
