@@ -296,34 +296,50 @@ public function show(Product $product)
         }
     }
 
-public function reorder(Request $request)
-{
-    $request->validate([
-        'source_id' => 'required|exists:products,id',
-        'target_id' => 'required|exists:products,id',
-    ]);
+    public function reorder(Request $request)
+    {
+        // ✅ 1. Validamos que recibimos 'id' (el que se mueve) y 'target_id' (el destino)
+        $request->validate([
+            'id' => 'required|exists:products,id',
+            'target_id' => 'required|exists:products,id|different:id',
+        ]);
 
-    try {
-        $source = Product::find($request->source_id);
-        $target = Product::find($request->target_id);
+        try {
+            $product = Product::find($request->id);
+            $target = Product::find($request->target_id);
 
-        if (!$source || !$target) {
-            return response()->json(['error' => 'Productos no encontrados'], 404);
+            $oldOrder = $product->order;
+            $newOrder = $target->order;
+
+            // Si por alguna razón ya tienen el mismo orden, no hacemos nada
+            if ($oldOrder === $newOrder) {
+                return response()->json(['message' => 'Orden sin cambios']);
+            }
+
+            // ✅ 2. Usamos una transacción para garantizar que la base de datos no se corrompa
+            DB::transaction(function () use ($product, $oldOrder, $newOrder) {
+                if ($newOrder > $oldOrder) {
+                    // Se mueve hacia ABAJO: 
+                    // Los elementos que estaban en el medio SUBEN una posición (su orden disminuye)
+                    Product::whereBetween('order', [$oldOrder + 1, $newOrder])
+                        ->decrement('order');
+                } else {
+                    // Se mueve hacia ARRIBA: 
+                    // Los elementos que estaban en el medio BAJAN una posición (su orden aumenta)
+                    Product::whereBetween('order', [$newOrder, $oldOrder - 1])
+                        ->increment('order');
+                }
+                
+                // ✅ 3. Finalmente, asignamos el nuevo orden al producto que el usuario arrastró
+                $product->update(['order' => $newOrder]);
+            });
+
+            return response()->json(['message' => 'Orden actualizado correctamente (efecto empujar)']);
+            
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Error al reordenar: ' . $e->getMessage()], 500);
         }
-
-        // Intercambiar los valores de 'order'
-        $tempOrder = $source->order;
-        $source->order = $target->order;
-        $target->order = $tempOrder;
-
-        $source->save();
-        $target->save();
-
-        return response()->json(['message' => 'Orden intercambiado correctamente']);
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Error al intercambiar orden: ' . $e->getMessage()], 500);
     }
-}
 
 private function syncSkus(Product $product): void
 {
