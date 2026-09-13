@@ -26,8 +26,9 @@ class ShippingController extends Controller
      */
     private function format(Shipping $shipping): Shipping
     {
-        // Agregamos dinámicamente la propiedad image_url para el frontend
-        $shipping->image_url = $this->imageUrl($shipping->url);
+        // 'url' en la BD ya tiene algo como: "shippings/abc123.jpg"
+        // getStorageUrl en el frontend se encargará de agregar el dominio base.
+        $shipping->image_url = $shipping->url; 
         return $shipping;
     }
 
