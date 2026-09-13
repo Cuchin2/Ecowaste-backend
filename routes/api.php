@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\WishlistItemController ;
 use App\Http\Controllers\Api\ColorFlavorTypeController ;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\ShippingController;
 use App\Models\ProductSku;
 /**
  * RUTA PROTEGIDA POR SANCTUM
@@ -225,7 +226,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [WishlistShareController::class, 'store']);
         Route::delete('/{share}', [WishlistShareController::class, 'destroy']);
     });
-
+    // =============================================================
+    // RUTAS - TABLA SHIPPING (ENVIOS)
+    // ============================================================
+    Route::post('shippings/reorder', [ShippingController::class, 'reorder']);
+    Route::apiResource('shippings', ShippingController::class);
     // =============================================================
     // RUTAS - DEL CHECKOUT
     // ============================================================
