@@ -182,45 +182,46 @@ class ShippingController extends Controller
         /**
      * Asignar un método de envío a la orden de venta activa del usuario logeado
      */
+    /**
+     * Asignar un método de envío a la orden de venta activa del usuario logeado
+     */
     public function assignToOrder(Request $request)
     {
-        // 1. Validar que el ID del envío exista
         $validated = $request->validate([
             'shipping_id' => 'required|exists:shippings,id',
         ]);
 
         try {
-            // 2. Obtener el usuario autenticado
             $user = auth()->user();
 
             if (!$user) {
                 return response()->json(['error' => 'No autorizado. Debes iniciar sesión.'], 401);
             }
 
-            // 3. Buscar la orden de venta activa del usuario.
-            // IMPORTANTE: Ajusta 'status' => 'pending' según la lógica real de tu proyecto 
-            // (ej: 'cart', 'pending', 'draft', etc.)
-            $saleOrder = $user->saleOrders()->where('status', 'pending')->first();
+            // 👈 CAMBIO CLAVE: Buscar la orden con estado 'CREATE' (según tu migración)
+            $saleOrder = $user->saleOrders()->where('status', 'CREATE')->latest()->first();
 
             if (!$saleOrder) {
                 return response()->json([
-                    'error' => 'No se encontró una orden de venta activa para este usuario.'
+                    'error' => 'No se encontró una orden de venta activa (estado CREATE) para este usuario.'
                 ], 404);
             }
 
-            // 4. Actualizar la orden con el método de envío seleccionado
+            // Actualizar la orden con el método de envío seleccionado
             $saleOrder->update([
                 'shipping_id' => $validated['shipping_id']
             ]);
 
-            // 5. (Opcional pero recomendado) Recargar la relación para devolver los datos actualizados
-            // Asegúrate de tener la relación 'shipping' definida en el modelo SaleOrder
+            // Recargar la relación para devolver los datos del envío en la respuesta
             $saleOrder->load('shipping');
 
             /* 
-             * NOTA: Si tu lógica de negocio requiere recalcular el total de la orden 
-             * al cambiar el envío (sumando el precio del shipping), hazlo aquí.
-             * Ej: $saleOrder->recalculateTotals(); $saleOrder->save();
+             * NOTA: Si el precio del envío debe sumarse al total de la orden, 
+             * puedes hacerlo aquí. Ejemplo:
+             * if ($saleOrder->shipping) {
+             *     $saleOrder->total = $saleOrder->subtotal + $saleOrder->shipping->price;
+             *     $saleOrder->save();
+             * }
              */
 
             return response()->json([
