@@ -34,6 +34,8 @@ use App\Http\Controllers\Api\ColorFlavorTypeController ;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\ShippingController;
+use App\Http\Controllers\Api\SaleOrderController;
+
 use App\Models\ProductSku;
 /**
  * RUTA PROTEGIDA POR SANCTUM
@@ -230,6 +232,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // RUTAS - TABLA SHIPPING (ENVIOS)
     // ============================================================
     Route::post('shippings/reorder', [ShippingController::class, 'reorder']);
+    // RUTA acceder al método de nevio seleccionado del usuario
+    Route::get('/sale-orders/current', [SaleOrderController::class, 'current']);
     // RUTA de asignación del método de envio a la orden del usuario
     Route::post('/shippings/assign-to-order', [ShippingController::class, 'assignToOrder']);
     Route::apiResource('shippings', ShippingController::class);
