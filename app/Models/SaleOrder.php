@@ -46,6 +46,10 @@ class SaleOrder extends Model
     {
         return $this->belongsTo(Shipping::class, 'shipping_id');
     }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
     public function scopeSearch($query, $value)
     {
         $query->where('name','like',"%{$value}%")

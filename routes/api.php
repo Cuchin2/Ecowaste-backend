@@ -230,6 +230,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // RUTAS - TABLA SHIPPING (ENVIOS)
     // ============================================================
     Route::post('shippings/reorder', [ShippingController::class, 'reorder']);
+    // RUTA de asignación del método de envio a la orden del usuario
+    Route::post('/shippings/assign-to-order', [ShippingController::class, 'assignToOrder']);
     Route::apiResource('shippings', ShippingController::class);
     // =============================================================
     // RUTAS - DEL CHECKOUT
