@@ -178,6 +178,7 @@ public function index()
             'status_label' => $order->convert(),
             'step' => (int) $order->paso(),
             'created_at' => $order->created_at->format('d/m/Y H:i'),
+            'updated_at' => $order->updated_at->format('d/m/Y H:i'),
             'total' => (float) $order->total,
             'shipping' => $order->shipping ? [
                 'id' => $order->shipping->id,
