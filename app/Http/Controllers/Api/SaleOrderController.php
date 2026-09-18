@@ -152,7 +152,7 @@ public function index()
     }
 
     $orders = SaleOrder::where('user_id', $user->id)
-        ->with(['saleDetails', 'shipping'])
+        ->with(['saleDetails', 'shipping', 'deliveryOrder'])
         ->orderBy('created_at', 'desc')
         ->get();
 
@@ -194,6 +194,8 @@ public function index()
                 'country' => $order->country,
                 'zip_code' => $order->zip_code,
             ],
+            'name_delivery'=>$order->deliveryOrder->name, // Nombre del DeliveryOrder
+            'lastname_delivery'=>$order->deliveryOrder->last_name, // Apellido del DeliveryOrder
             'items' => $items,
             'total_items' => $items->sum('quantity'),
             'subtotal' => $items->sum('subtotal'),
