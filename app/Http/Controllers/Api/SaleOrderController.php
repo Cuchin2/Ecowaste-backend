@@ -57,7 +57,7 @@ class SaleOrderController extends Controller
 
         // 1. Cargamos TODAS las relaciones necesarias para evitar valores null
         $cartItems = CartItem::where('user_id', $user->id)
-            ->with(['sku.product.brand', 'sku.colorFlavor.type']) 
+            ->with(['sku.product.brand', 'sku.colorFlavor.type', 'sku.images']) // 👈 Agregado sku.images
             ->get();
 
         if ($cartItems->isEmpty()) {
@@ -94,13 +94,14 @@ class SaleOrderController extends Controller
 
                     // 5. SKU CODE: Buscamos en 'sku', luego 'code', y si no, usamos el ID como string
                     $skuCode = (string) ($sku->sku ?? $sku->code ?? $sku->id);
-
+                    // 👇 NUEVO: Obtener la primera imagen del SKU (ya viene ordenada por 'order')
+                    $skuImage = $sku->images->first()?->path;
                     $orderDetails[] = [
                         'sale_order_id' => $order->id,
                         'user_id'       => $user->id,
                         'name'          => $sku->name ?? 'Producto sin nombre',
                         'brand'         => $brandName,          // ✅ Ahora es un string limpio
-                        'image'         => $sku->image ?? null,
+                        'image'         => $skuImage ?? null,
                         'quantity'      => (int) $item->quantity,
                         'sell_price'    => $finalPrice,         // ✅ Nunca será null
                         'color_flavor'  => $colorFlavorString,
