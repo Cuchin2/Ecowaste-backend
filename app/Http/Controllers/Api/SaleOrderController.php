@@ -136,4 +136,100 @@ class SaleOrderController extends Controller
             ], 500);
         }
     }
+        /**
+     * Obtener los detalles completos de una orden específica (Para vista de confirmación/historial)
+     */
+    public function show($orderId)
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['error' => 'No autorizado'], 401);
+        }
+
+        // 1. Buscar la orden que pertenezca al usuario autenticado
+        // Usamos 'saleDetails' (nombre real de tu relación) y 'shipping'
+        $order = SaleOrder::where('id', $orderId)
+            ->where('user_id', $user->id)
+            ->with(['saleDetails', 'shipping'])
+            ->first();
+
+        if (!$order) {
+            return response()->json(['error' => 'Orden no encontrada o no pertenece al usuario'], 404);
+        }
+
+        // 2. Mapear los items (detalles de la venta) a un formato limpio para el frontend
+        $items = $order->saleDetails->map(function($detail) {
+            $quantity = (int) $detail->qtn; // Tu columna se llama 'qtn'
+            $price = (float) $detail->sell_price;
+            
+            return [
+                'id' => $detail->id,
+                'name' => $detail->name,
+                'brand' => $detail->brand,
+                'image' => $detail->productImage, // Tu columna se llama 'productImage'
+                'quantity' => $quantity,
+                'price' => $price,
+                'subtotal' => $quantity * $price,
+                'color' => $detail->color,        // Tu columna se llama 'color'
+                'sku' => $detail->sku,
+                'slug' => $detail->slug,
+            ];
+        });
+
+        // 3. Calcular totales para el resumen
+        $shippingPrice = $order->shipping ? (float) $order->shipping->price : 0.00;
+        $calculatedSubtotal = $items->sum('subtotal');
+        $totalItems = $items->sum('quantity');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                // Información general de la orden
+                'order' => [
+                    'id' => $order->id,
+                    'status' => $order->status,
+                    'status_label' => $order->convert(), // ¡Usamos tu método del modelo!
+                    'created_at' => $order->created_at->format('d/m/Y H:i'),
+                    'customer' => [
+                        'full_name' => trim($order->name . ' ' . $order->last_name),
+                        'email' => $order->email,
+                        'phone' => $order->phone,
+                        'document' => $order->document_type . ' - ' . $order->dni,
+                        'business' => $order->business,
+                    ],
+                    'address' => [
+                        'address' => $order->address,
+                        'reference' => $order->reference,
+                        'district' => $order->district,
+                        'city' => $order->city,
+                        'state' => $order->state,
+                        'country' => $order->country,
+                        'zip_code' => $order->zip_code,
+                    ]
+                ],
+                
+                // Información del método de envío
+                'shipping' => $order->shipping ? [
+                    'id' => $order->shipping->id,
+                    'name' => $order->shipping->name,
+                    'title' => $order->shipping->title,
+                    'price' => $shippingPrice,
+                    'state' => $order->shipping->state,
+                    'image' => $order->shipping->url, // Tu columna de imagen en Shipping es 'url'
+                ] : null,
+
+                // Lista de productos comprados
+                'items' => $items,
+
+                // Resumen financiero
+                'summary' => [
+                    'subtotal' => $calculatedSubtotal,
+                    'shipping' => $shippingPrice,
+                    'total' => (float) $order->total, // Usamos el total guardado en la orden
+                    'total_items' => $totalItems,
+                ]
+            ]
+        ]);
+    }
 }

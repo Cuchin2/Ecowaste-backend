@@ -244,6 +244,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/current', [CheckoutController::class, 'current']);
     // PAGO EXITOSO
     Route::post('/sale-orders/finalize', [SaleOrderController::class, 'finalizeOrder']);
+    // MOSTRAR LAS COMPRAS DEL USUARIO
+    Route::get('/sale-orders/{orderId}', [SaleOrderController::class, 'show']);
 });
 // Rutas públicas
 Route::get('/products-shop/{product}', [ProductSkuController::class, 'show']);
