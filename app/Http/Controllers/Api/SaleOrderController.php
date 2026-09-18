@@ -195,6 +195,8 @@ public function index()
                 'country' => $order->country,
                 'zip_code' => $order->zip_code,
             ],
+            'name'=>$order->name,
+            'lastname'=>$order->lastname,
             'name_delivery'=>$order->deliveryOrder->name, // Nombre del DeliveryOrder
             'lastname_delivery'=>$order->deliveryOrder->last_name, // Apellido del DeliveryOrder
             'items' => $items,
