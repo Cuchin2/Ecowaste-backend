@@ -98,9 +98,9 @@ class SaleOrderController extends Controller
                     $orderDetails[] = [
                         'sale_order_id' => $order->id,
                         'user_id'       => $user->id,
-                        'name'          => $product->name ?? 'Producto sin nombre',
+                        'name'          => $sku->name ?? 'Producto sin nombre',
                         'brand'         => $brandName,          // ✅ Ahora es un string limpio
-                        'image'         => $product->image ?? $sku->image ?? null,
+                        'image'         => $sku->image ?? null,
                         'quantity'      => (int) $item->quantity,
                         'sell_price'    => $finalPrice,         // ✅ Nunca será null
                         'color_flavor'  => $colorFlavorString,
