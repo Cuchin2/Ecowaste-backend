@@ -171,7 +171,7 @@ public function index()
                 'slug' => $detail->slug,
             ];
         });
-
+        $total=$order->shipping->price + $items->sum('subtotal');
         return [
             'id' => $order->id,
             'status' => $order->status,
@@ -202,6 +202,7 @@ public function index()
             'items' => $items,
             'total_items' => $items->sum('quantity'),
             'subtotal' => $items->sum('subtotal'),
+            'total'=> $total,
             'shipping_cost' => $order->shipping ? (float) $order->shipping->price : 0,
         ];
     });
