@@ -49,16 +49,15 @@ class SaleOrderController extends Controller
             return response()->json(['error' => 'No autorizado'], 401);
         }
 
-        // 1. Buscar la orden CREATE del usuario
         $order = $user->saleOrders()->where('status', 'CREATE')->latest()->first();
 
         if (!$order) {
             return response()->json(['error' => 'No hay una orden activa para procesar'], 404);
         }
 
-        // 2. Obtener los items del carrito del usuario con sus relaciones
+        // 1. Cargamos TODAS las relaciones necesarias para evitar valores null
         $cartItems = CartItem::where('user_id', $user->id)
-            ->with(['sku.product', 'sku.colorFlavor.type'])
+            ->with(['sku.product.brand', 'sku.colorFlavor.type']) 
             ->get();
 
         if ($cartItems->isEmpty()) {
@@ -66,52 +65,63 @@ class SaleOrderController extends Controller
         }
 
         try {
-            // 3. 🛡️ TRANSACCIÓN DE BASE DE DATOS (Todo o Nada)
             DB::transaction(function () use ($order, $cartItems, $user) {
                 
                 $orderDetails = [];
 
-                // 4. Crear el SNAPSHOT de cada producto
                 foreach ($cartItems as $item) {
                     $sku = $item->sku;
                     $product = $sku->product;
                     $colorFlavor = $sku->colorFlavor;
 
-                    // Construir el string de color_flavor (Ej: "Talla - Rojo" o solo el nombre del tipo)
-                    $colorFlavorString = $colorFlavor && $colorFlavor->type 
-                        ? $colorFlavor->type->name 
-                        : ($colorFlavor ? $colorFlavor->name : null);
+                    // 2. BRAND: Extraemos solo el nombre (string), no el objeto completo
+                    $brandName = 'Sin marca';
+                    if (is_object($product->brand)) {
+                        $brandName = $product->brand->name ?? 'Sin marca';
+                    } elseif (is_string($product->brand)) {
+                        $brandName = $product->brand;
+                    }
+
+                    // 3. COLOR/FLAVOR: Obtenemos el nombre del tipo o del flavor
+                    $colorFlavorString = 'Estándar';
+                    if ($colorFlavor) {
+                        $colorFlavorString = $colorFlavor->type ? $colorFlavor->type->name : $colorFlavor->name;
+                    }
+
+                    // 4. PRECIO: Buscamos en sell_price, luego en price, y si no, 0.00. 
+                    // Forzamos a float para evitar errores de tipo.
+                    $finalPrice = (float) ($sku->sell_price ?? $sku->price ?? 0.00);
+
+                    // 5. SKU CODE: Buscamos en 'sku', luego 'code', y si no, usamos el ID como string
+                    $skuCode = (string) ($sku->sku ?? $sku->code ?? $sku->id);
 
                     $orderDetails[] = [
                         'sale_order_id' => $order->id,
                         'user_id'       => $user->id,
-                        'name'          => $product->name, // O $sku->name si prefieres
-                        'brand'         => $product->brand ?? null,
-                        'image'         => $product->image ?? null, // O lógica para imagen del SKU
-                        'quantity'      => $item->quantity,
-                        'sell_price'    => $sku->price, // Precio congelado en el tiempo
+                        'name'          => $product->name ?? 'Producto sin nombre',
+                        'brand'         => $brandName,          // ✅ Ahora es un string limpio
+                        'image'         => $product->image ?? $sku->image ?? null,
+                        'quantity'      => (int) $item->quantity,
+                        'sell_price'    => $finalPrice,         // ✅ Nunca será null
                         'color_flavor'  => $colorFlavorString,
-                        'slug'          => $product->slug,
-                        'sku'           => $sku->sku_code, // Asumiendo que tu campo se llama así
-                        'sku_id'        => $sku->id,
-                        'product_id'    => $product->id,
+                        'slug'          => $product->slug ?? 'sin-slug',
+                        'sku'           => $skuCode,            // ✅ Nunca será null
+                        'sku_id'        => (int) $sku->id,
+                        'product_id'    => (int) $product->id,
                         'created_at'    => now(),
                         'updated_at'    => now(),
                     ];
                 }
 
-                // Insertar todos los detalles de golpe (más eficiente que un loop de creates)
+                // Insertamos todos los detalles de una vez
                 SaleOrderDetail::insert($orderDetails);
 
-                // 5. Actualizar el estado de la orden a PAID
+                // Actualizamos el estado de la orden
                 $order->update(['status' => 'PAID']);
 
-                // 6. 🧹 Limpiar el carrito del usuario (ya se convirtió en orden)
+                // Limpiamos el carrito del usuario
                 CartItem::where('user_id', $user->id)->delete();
             });
-
-            // 7. Disparar eventos de correo aquí (ej: event(new OrderPaid($order));)
-            // Por ahora, solo retornamos éxito.
 
             return response()->json([
                 'success' => true,
@@ -120,7 +130,7 @@ class SaleOrderController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // Si algo falla, la transacción se revierte automáticamente (Rollback)
+            // Si algo falla, la transacción se revierte automáticamente
             return response()->json([
                 'error' => 'Error al procesar el pedido: ' . $e->getMessage()
             ], 500);
