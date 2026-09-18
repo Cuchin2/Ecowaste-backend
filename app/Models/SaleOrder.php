@@ -40,7 +40,7 @@ class SaleOrder extends Model
     }
     public function saleDetails()
     {
-        return $this->hasMany(SaleDetail::class,'sale_order_id');
+        return $this->hasMany(SaleOrderDetail::class,'sale_order_id');
     }
     public function shipping()
     {
