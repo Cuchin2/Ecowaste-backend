@@ -246,7 +246,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/sale-orders/finalize', [SaleOrderController::class, 'finalizeOrder']);
     // MOSTRAR LAS COMPRAS DEL USUARIO
     Route::get('/sale-orders', [SaleOrderController::class, 'index']);
-});
+
+    // RUTAS PARA GESTIONAR LAS VENTAS
+        // Listar todas las ventas
+        Route::get('/sales', [AdminSaleOrderController::class, 'index']);
+        
+        // Ver detalle de una venta
+        Route::get('/sales/{orderId}', [AdminSaleOrderController::class, 'show']);
+        
+        // Cambiar estado de una venta
+        Route::patch('/sales/{orderId}/status', [AdminSaleOrderController::class, 'updateStatus']);
+        
+        // Estadísticas (opcional)
+        Route::get('/sales/statistics', [AdminSaleOrderController::class, 'statistics']);
+    });
 // Rutas públicas
 Route::get('/products-shop/{product}', [ProductSkuController::class, 'show']);
 Route::get('/shop', [ProductController::class, 'shop']);
