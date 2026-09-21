@@ -35,7 +35,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\ShippingController;
 use App\Http\Controllers\Api\SaleOrderController;
-
+use App\Http\Controllers\Api\AdminSaleOrderController;
 use App\Models\ProductSku;
 /**
  * RUTA PROTEGIDA POR SANCTUM
