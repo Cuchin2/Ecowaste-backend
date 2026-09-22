@@ -64,14 +64,16 @@ class SaleOrder extends Model
         switch ($this->attributes['status']) {
             case 'PAID':
                 return 'Pagado';
+            case 'PROCESSING':  // 👈 NUEVO
+                return 'En proceso';
             case 'TRACKING':
                 return 'En camino';
             case 'CANCEL':
                 return 'Cancelado';
             case 'DONE':
-                    return 'Entregado';
+                return 'Entregado';
             case 'CREATE':
-                        return 'Sin pagar';
+                return 'Sin pagar';
             default:
                 return 'En proceso';
         }
@@ -79,17 +81,19 @@ class SaleOrder extends Model
     public function paso(){
         switch ($this->attributes['status']) {
             case 'PAID':
-                return '1';
+                return 1;
+            case 'PROCESSING':  // 👈 NUEVO (paso 2, entre pagado y en camino)
+                return 2;
             case 'TRACKING':
-                return '3';
+                return 3;
             case 'CANCEL':
-                return '6';
+                return 6;
             case 'DONE':
-                    return '4';
+                return 4;
             case 'CREATE':
-                        return '0';
+                return 0;
             default:
-                return '2';
+                return 2;
         }
     }
 }

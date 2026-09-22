@@ -270,7 +270,7 @@ class AdminSaleOrderController extends Controller
             'status' => [
                 'required',
                 'string',
-                Rule::in(['CREATE', 'PAID', 'TRACKING', 'DONE', 'CANCEL'])
+                Rule::in(['CREATE', 'PAID', 'PROCESSING', 'TRACKING', 'DONE', 'CANCEL']) // 👈 Agregado PROCESSING
             ],
         ]);
 
@@ -293,10 +293,11 @@ class AdminSaleOrderController extends Controller
         // Validar transiciones de estado permitidas
         $allowedTransitions = [
             'CREATE' => ['PAID', 'CANCEL'],
-            'PAID' => ['TRACKING', 'CANCEL'],
+            'PAID' => ['PROCESSING', 'CANCEL'], // 👈 Ahora PAID puede ir a PROCESSING
+            'PROCESSING' => ['TRACKING', 'CANCEL'], // 👈 NUEVO: PROCESSING puede ir a TRACKING o CANCEL
             'TRACKING' => ['DONE', 'CANCEL'],
-            'DONE' => [], // No se puede cambiar desde DONE
-            'CANCEL' => [], // No se puede cambiar desde CANCEL
+            'DONE' => [],
+            'CANCEL' => [],
         ];
 
         $currentStatus = $order->status;
