@@ -20,7 +20,7 @@ class AdminSaleOrderController extends Controller
         $validator = Validator::make($request->all(), [
             'per_page' => 'nullable|integer|min:1|max:100',
             'page' => 'nullable|integer|min:1',
-            'status' => 'nullable|string|in:CREATE,PAID,TRACKING,DONE,CANCEL',
+            'status' => 'nullable|string|in:CREATE,PAID,PROCESSING,TRACKING,DONE,CANCEL',
             'search' => 'nullable|string|max:255',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after_or_equal:date_from',
