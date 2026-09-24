@@ -14,146 +14,79 @@ class AdminSaleOrderController extends Controller
     /**
      * Listar todas las ventas (para el dashboard)
      */
-    public function index(Request $request)
-    {
-        // Validar parámetros de consulta
-        $validator = Validator::make($request->all(), [
-            'per_page' => 'nullable|integer|min:1|max:100',
-            'page' => 'nullable|integer|min:1',
-            'status' => 'nullable|string|in:CREATE,PAID,PROCESSING,TRACKING,DONE,CANCEL',
-            'search' => 'nullable|string|max:255',
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date|after_or_equal:date_from',
-            'sort_by' => 'nullable|string|in:created_at,updated_at,total,name',
-            'sort_order' => 'nullable|string|in:asc,desc',
-        ]);
+public function index()
+{
+    $user = Auth::user();
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
+    if (!$user) {
+        return response()->json(['error' => 'No autorizado'], 401);
+    }
 
-        // Construir la consulta
-        $query = SaleOrder::with([
-            'saleDetails',
-            'shipping',
-            'deliveryOrder',
-            'user' => function($q) {
-                $q->select('id', 'name', 'email');
-            }
-        ]);
+    $orders = SaleOrder::where('user_id', $user->id)
+        ->with(['saleDetails', 'shipping', 'deliveryOrder'])
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-        // Filtro por estado
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Filtro por búsqueda (nombre, apellido, email, teléfono)
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('id', 'like', "%{$search}%");
-            });
-        }
-
-        // Filtro por rango de fechas
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        // Ordenamiento
-        $sortBy = $request->input('sort_by', 'created_at');
-        $sortOrder = $request->input('sort_order', 'desc');
-        $query->orderBy($sortBy, $sortOrder);
-
-        // Paginación
-        $perPage = $request->input('per_page', 15);
-        $orders = $query->paginate($perPage);
-
-        // Transformar los datos
-        $ordersData = collect($orders->items())->map(function($order) {
-            $items = $order->saleDetails->map(function($detail) {
-                return [
-                    'id' => $detail->id,
-                    'name' => $detail->name,
-                    'brand' => $detail->brand,
-                    'image' => $detail->image,
-                    'quantity' => (int) $detail->quantity,
-                    'price' => (float) $detail->sell_price,
-                    'subtotal' => (float) ($detail->sell_price * $detail->quantity),
-                    'color_flavor' => $detail->color_flavor,
-                    'sku' => $detail->sku,
-                ];
-            });
-
-            $subtotal = $items->sum('subtotal');
-            $shippingCost = $order->shipping ? (float) $order->shipping->price : 0;
-            $total = $subtotal + $shippingCost;
-
+    $ordersData = $orders->map(function($order) {
+        $items = $order->saleDetails->map(function($detail) {
             return [
-                'id' => $order->id,
-                'status' => $order->status,
-                'status_label' => $order->convert(),
-                'step' => (int) $order->paso(),
-                'created_at' => $order->created_at->format('d/m/Y H:i'),
-                'updated_at' => $order->updated_at->format('d/m/Y H:i'),
-                'customer' => [
-                    'id' => $order->user->id ?? null,
-                    'name' => trim($order->name . ' ' . $order->last_name),
-                    'email' => $order->email,
-                    'phone' => $order->phone,
-                    'document' => $order->document_type . ' - ' . $order->dni,
-                ],
-                'shipping' => $order->shipping ? [
-                    'id' => $order->shipping->id,
-                    'name' => $order->shipping->name,
-                    'price' => $shippingCost,
-                    'state' => $order->shipping->state,
-                ] : null,
-                'address' => [
-                    'address' => $order->address,
-                    'district' => $order->district,
-                    'city' => $order->city,
-                    'state' => $order->state,
-                    'country' => $order->country,
-                ],
-                'delivery' => $order->deliveryOrder ? [
-                    'name' => trim($order->deliveryOrder->name . ' ' . $order->deliveryOrder->last_name),
-                    'address' => $order->deliveryOrder->address,
-                    'district' => $order->deliveryOrder->district,
-                    'city' => $order->deliveryOrder->city,
-                ] : null,
-                'items_count' => $items->count(),
-                'total_items' => $items->sum('quantity'),
-                'subtotal' => $subtotal,
-                'shipping_cost' => $shippingCost,
-                'total' => $total,
+                'id' => $detail->id,
+                'name' => $detail->name,
+                'brand' => $detail->brand,
+                'image' => $detail->image,
+                'quantity' => (int) $detail->quantity,
+                'price' => (float) $detail->sell_price,
+                'subtotal' => (float) ($detail->sell_price * $detail->quantity),
+                'color_flavor' => $detail->color_flavor,
+                'sku' => $detail->sku,
             ];
         });
 
-        return response()->json([
-            'success' => true,
-            'data' => $ordersData,
-            'pagination' => [
-                'current_page' => $orders->currentPage(),
-                'last_page' => $orders->lastPage(),
-                'per_page' => $orders->perPage(),
-                'total' => $orders->total(),
-                'from' => $orders->firstItem(),
-                'to' => $orders->lastItem(),
-            ]
-        ]);
-    }
+        // ✅ 1. CÁLCULO SEGURO: Si no hay envío, el costo es 0
+        $shippingCost = $order->shipping ? (float) $order->shipping->price : 0;
+        $subtotal = $items->sum('subtotal');
+        $total = $subtotal + $shippingCost;
+
+        return [
+            'id' => $order->id,
+            'status' => $order->status,
+            'status_label' => $order->convert(),
+            'step' => (int) $order->paso(),
+            'created_at' => $order->created_at->format('d/m/Y H:i'),
+            'updated_at' => $order->updated_at->format('d/m/Y H:i'),
+            'total' => (float) $total,
+            
+            // ✅ 2. Datos planos que espera tu componente ShopDropdow
+            'name' => $order->name ?? '',
+            'lastname' => $order->last_name ?? '',
+            'name_delivery' => $order->deliveryOrder ? $order->deliveryOrder->name : ($order->name ?? ''),
+            'lastname_delivery' => $order->deliveryOrder ? $order->deliveryOrder->last_name : ($order->last_name ?? ''),
+
+            'shipping' => $order->shipping ? [
+                'id' => $order->shipping->id,
+                'name' => $order->shipping->name,
+                'price' => $shippingCost,
+                'state' => $order->shipping->state,
+            ] : null,
+            
+            'address' => [
+                'address' => $order->address ?? '',
+                'reference' => $order->reference,
+                'district' => $order->district ?? '',
+                'city' => $order->city ?? '',
+                'state' => $order->state ?? '',
+                'country' => $order->country ?? '',
+            ],
+            
+            'items' => $items,
+        ];
+    });
+
+    return response()->json([
+        'success' => true,
+        'data' => $ordersData
+    ]);
+}
 
     /**
      * Ver el detalle completo de una orden
