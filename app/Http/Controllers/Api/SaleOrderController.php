@@ -182,8 +182,8 @@ public function index()
             'status' => $order->status,
             'status_label' => $order->convert(),
             'step' => (int) $order->paso(),
-            'created_at' => $order->created_at->format('d/m/Y H:i'),
-            'updated_at' => $order->updated_at->format('d/m/Y H:i'),
+            'created_at' => $order->created_at->format('d/m/Y h:ia'),
+            'updated_at' => $order->updated_at->format('d/m/Y h:ia'),
             'total' => (float) $total, // Usamos el total calculado de forma segura
             
             'shipping' => $order->shipping ? [
