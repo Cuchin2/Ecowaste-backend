@@ -162,16 +162,21 @@ public function index()
                 'id' => $detail->id,
                 'name' => $detail->name,
                 'brand' => $detail->brand,
-                'image' => $detail->image, // Campo correcto de SaleOrderDetail
-                'quantity' => (int) $detail->quantity, // Campo correcto
+                'image' => $detail->image,
+                'quantity' => (int) $detail->quantity,
                 'price' => (float) $detail->sell_price,
                 'subtotal' => (float) ($detail->sell_price * $detail->quantity),
-                'color_flavor' => $detail->color_flavor, // Campo correcto
+                'color_flavor' => $detail->color_flavor,
                 'sku' => $detail->sku,
                 'slug' => $detail->slug,
             ];
         });
-        $total=$order->shipping->price + $items->sum('subtotal');
+
+        // ✅ 1. CÁLCULO SEGURO: Si no hay envío, el costo es 0. ¡Esto elimina el error 500!
+        $shippingCost = $order->shipping ? (float) $order->shipping->price : 0;
+        $subtotal = $items->sum('subtotal');
+        $total = $subtotal + $shippingCost;
+
         return [
             'id' => $order->id,
             'status' => $order->status,
@@ -179,31 +184,35 @@ public function index()
             'step' => (int) $order->paso(),
             'created_at' => $order->created_at->format('d/m/Y H:i'),
             'updated_at' => $order->updated_at->format('d/m/Y H:i'),
-            'total' => (float) $order->total,
+            'total' => (float) $total, // Usamos el total calculado de forma segura
+            
             'shipping' => $order->shipping ? [
                 'id' => $order->shipping->id,
                 'name' => $order->shipping->name,
-                'price' => (float) $order->shipping->price,
+                'price' => $shippingCost,
                 'state' => $order->shipping->state,
             ] : null,
+            
             'address' => [
-                'address' => $order->address,
+                'address' => $order->address ?? '',
                 'reference' => $order->reference,
-                'district' => $order->district,
-                'city' => $order->city,
-                'state' => $order->state,
-                'country' => $order->country,
+                'district' => $order->district ?? '',
+                'city' => $order->city ?? '',
+                'state' => $order->state ?? '',
+                'country' => $order->country ?? '',
                 'zip_code' => $order->zip_code,
             ],
-            'name'=>$order->name,
-            'lastname'=>$order->lastname,
-            'name_delivery'=>$order->deliveryOrder->name, // Nombre del DeliveryOrder
-            'lastname_delivery'=>$order->deliveryOrder->last_name, // Apellido del DeliveryOrder
+            
+            // ✅ 2. ACCESO SEGURO A PROPIEDADES: Usamos ternarios para evitar nulls
+            'name' => $order->name ?? '',
+            'lastname' => $order->last_name ?? '', // Corregido: el campo en BD es 'last_name'
+            'name_delivery' => $order->deliveryOrder ? $order->deliveryOrder->name : ($order->name ?? ''),
+            'lastname_delivery' => $order->deliveryOrder ? $order->deliveryOrder->last_name : ($order->last_name ?? ''),
+            
             'items' => $items,
             'total_items' => $items->sum('quantity'),
-            'subtotal' => $items->sum('subtotal'),
-            'total'=> $total,
-            'shipping_cost' => $order->shipping ? (float) $order->shipping->price : 0,
+            'subtotal' => $subtotal,
+            'shipping_cost' => $shippingCost,
         ];
     });
 
