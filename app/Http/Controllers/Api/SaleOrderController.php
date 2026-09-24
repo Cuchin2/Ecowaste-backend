@@ -152,6 +152,7 @@ public function index()
     }
 
     $orders = SaleOrder::where('user_id', $user->id)
+        ->where('status', '!=', 'CREATE') // 👈 EXCLUYE las órdenes "Sin pagar"
         ->with(['saleDetails', 'shipping', 'deliveryOrder'])
         ->orderBy('created_at', 'desc')
         ->get();
