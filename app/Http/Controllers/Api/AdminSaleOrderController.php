@@ -6,35 +6,34 @@ use App\Http\Controllers\Controller;
 use App\Models\SaleOrder;
 use App\Models\SaleOrderDetail;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth; // 👈 ¡ESTA ES LA LÍNEA QUE FALTABA Y CAUSABA EL ERROR 500!
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
 class AdminSaleOrderController extends Controller
 {
     /**
-     * Listar todas las ventas (para el dashboard)
+     * Listar TODAS las ventas (Panel de Administración)
      */
     public function index(Request $request)
     {
         $user = Auth::user();
-
         if (!$user) {
             return response()->json(['error' => 'No autorizado'], 401);
         }
 
-        $query = SaleOrder::where('user_id', $user->id)
-            ->with(['saleDetails', 'shipping', 'deliveryOrder'])
+        // 👇 SIN restricción de user_id para que el admin vea TODAS las órdenes
+        $query = SaleOrder::with(['saleDetails', 'shipping', 'deliveryOrder'])
             ->orderBy('created_at', 'desc');
 
-        // Filtro por estado (si viene del frontend)
-        if ($request->filled('status')) {
+        // Filtro por estado (Ignoramos si viene vacío, 'null' o 'ALL')
+        if ($request->filled('status') && $request->status !== 'ALL' && $request->status !== '') {
             $query->where('status', $request->status);
         }
 
         // Búsqueda por ID, nombre o apellido
-        if ($request->filled('search')) {
-            $search = $request->search;
+        if ($request->filled('search') && strlen(trim($request->search)) > 0) {
+            $search = trim($request->search);
             $query->where(function($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
                   ->orWhere('name', 'like', "%{$search}%")
@@ -42,8 +41,8 @@ class AdminSaleOrderController extends Controller
             });
         }
 
-        // Paginación (espera 'per_page' y 'page' del frontend)
-        $perPage = $request->per_page ?? 15;
+        // Paginación
+        $perPage = (int) ($request->per_page ?? 15);
         $orders = $query->paginate($perPage);
 
         $ordersData = $orders->map(function($order) {
@@ -102,7 +101,7 @@ class AdminSaleOrderController extends Controller
     }
 
     /**
-     * Ver el detalle completo de una orden
+     * Ver el detalle completo de CUALQUIER orden (Admin)
      */
     public function show($orderId)
     {
@@ -111,8 +110,8 @@ class AdminSaleOrderController extends Controller
             return response()->json(['error' => 'No autorizado'], 401);
         }
 
-        // 👈 Seguridad: Verificar que la orden pertenezca al usuario
-        $order = SaleOrder::where('user_id', $user->id)->with([
+        // 👇 SIN restricción de user_id
+        $order = SaleOrder::with([
             'saleDetails',
             'shipping',
             'deliveryOrder',
@@ -213,7 +212,7 @@ class AdminSaleOrderController extends Controller
     }
 
     /**
-     * Cambiar el estado de una orden
+     * Cambiar el estado de CUALQUIER orden (Admin)
      */
     public function updateStatus(Request $request, $orderId)
     {
@@ -237,13 +236,13 @@ class AdminSaleOrderController extends Controller
             ], 422);
         }
 
-        // 👈 Seguridad: Solo permitir actualizar si la orden es del usuario autenticado
-        $order = SaleOrder::where('user_id', $user->id)->find($orderId);
+        // 👇 SIN restricción de user_id para que el admin pueda actualizar cualquier orden
+        $order = SaleOrder::find($orderId);
 
         if (!$order) {
             return response()->json([
                 'success' => false,
-                'message' => 'Orden no encontrada o no tienes permiso'
+                'message' => 'Orden no encontrada'
             ], 404);
         }
 
@@ -277,57 +276,6 @@ class AdminSaleOrderController extends Controller
                 'status_label' => $order->convert(),
                 'step' => (int) $order->paso(),
                 'updated_at' => $order->updated_at->format('d/m/Y H:i'),
-            ]
-        ]);
-    }
-
-    /**
-     * Obtener estadísticas de ventas (opcional, para dashboard)
-     */
-    public function statistics(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date|after_or_equal:date_from',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $query = SaleOrder::where('status', '!=', 'CANCEL');
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        $totalOrders = $query->count();
-        $totalRevenue = $query->sum('total');
-        
-        $ordersByStatus = SaleOrder::selectRaw('status, COUNT(*) as count')
-            ->when($request->filled('date_from'), function($q) use ($request) {
-                $q->whereDate('created_at', '>=', $request->date_from);
-            })
-            ->when($request->filled('date_to'), function($q) use ($request) {
-                $q->whereDate('created_at', '<=', $request->date_to);
-            })
-            ->groupBy('status')
-            ->pluck('count', 'status');
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'total_orders' => $totalOrders,
-                'total_revenue' => (float) $totalRevenue,
-                'average_order_value' => $totalOrders > 0 ? (float) ($totalRevenue / $totalOrders) : 0,
-                'orders_by_status' => $ordersByStatus,
             ]
         ]);
     }
