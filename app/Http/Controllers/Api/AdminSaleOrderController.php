@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SaleOrder;
 use App\Models\SaleOrderDetail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth; // 👈 ¡ESTA ES LA LÍNEA QUE FALTABA Y CAUSABA EL ERROR 500!
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -14,86 +15,104 @@ class AdminSaleOrderController extends Controller
     /**
      * Listar todas las ventas (para el dashboard)
      */
-public function index()
-{
-    $user = Auth::user();
+    public function index(Request $request)
+    {
+        $user = Auth::user();
 
-    if (!$user) {
-        return response()->json(['error' => 'No autorizado'], 401);
-    }
+        if (!$user) {
+            return response()->json(['error' => 'No autorizado'], 401);
+        }
 
-    $orders = SaleOrder::where('user_id', $user->id)
-        ->with(['saleDetails', 'shipping', 'deliveryOrder'])
-        ->orderBy('created_at', 'desc')
-        ->get();
+        $query = SaleOrder::where('user_id', $user->id)
+            ->with(['saleDetails', 'shipping', 'deliveryOrder'])
+            ->orderBy('created_at', 'desc');
 
-    $ordersData = $orders->map(function($order) {
-        $items = $order->saleDetails->map(function($detail) {
+        // Filtro por estado (si viene del frontend)
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Búsqueda por ID, nombre o apellido
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                  ->orWhere('name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%");
+            });
+        }
+
+        // Paginación (espera 'per_page' y 'page' del frontend)
+        $perPage = $request->per_page ?? 15;
+        $orders = $query->paginate($perPage);
+
+        $ordersData = $orders->map(function($order) {
+            $items = $order->saleDetails->map(function($detail) {
+                return [
+                    'id' => $detail->id,
+                    'name' => $detail->name,
+                    'brand' => $detail->brand,
+                    'image' => $detail->image,
+                    'quantity' => (int) $detail->quantity,
+                    'price' => (float) $detail->sell_price,
+                    'subtotal' => (float) ($detail->sell_price * $detail->quantity),
+                    'color_flavor' => $detail->color_flavor,
+                    'sku' => $detail->sku,
+                ];
+            });
+
+            $shippingCost = $order->shipping ? (float) $order->shipping->price : 0;
+            $subtotal = $items->sum('subtotal');
+            $total = $subtotal + $shippingCost;
+
             return [
-                'id' => $detail->id,
-                'name' => $detail->name,
-                'brand' => $detail->brand,
-                'image' => $detail->image,
-                'quantity' => (int) $detail->quantity,
-                'price' => (float) $detail->sell_price,
-                'subtotal' => (float) ($detail->sell_price * $detail->quantity),
-                'color_flavor' => $detail->color_flavor,
-                'sku' => $detail->sku,
+                'id' => $order->id,
+                'status' => $order->status,
+                'status_label' => $order->convert(),
+                'step' => (int) $order->paso(),
+                'created_at' => $order->created_at->format('d/m/Y H:i'),
+                'updated_at' => $order->updated_at->format('d/m/Y H:i'),
+                'total' => (float) $total,
+                
+                'customer' => [
+                    'name' => trim(($order->name ?? '') . ' ' . ($order->last_name ?? ''))
+                ],
+
+                'shipping' => $order->shipping ? [
+                    'id' => $order->shipping->id,
+                    'name' => $order->shipping->name,
+                    'price' => $shippingCost,
+                    'state' => $order->shipping->state,
+                ] : null,
+                
+                'items' => $items,
             ];
         });
 
-        // ✅ 1. CÁLCULO SEGURO: Si no hay envío, el costo es 0
-        $shippingCost = $order->shipping ? (float) $order->shipping->price : 0;
-        $subtotal = $items->sum('subtotal');
-        $total = $subtotal + $shippingCost;
-
-        return [
-            'id' => $order->id,
-            'status' => $order->status,
-            'status_label' => $order->convert(),
-            'step' => (int) $order->paso(),
-            'created_at' => $order->created_at->format('d/m/Y H:i'),
-            'updated_at' => $order->updated_at->format('d/m/Y H:i'),
-            'total' => (float) $total,
-            
-            // ✅ 2. Datos planos que espera tu componente ShopDropdow
-            'name' => $order->name ?? '',
-            'lastname' => $order->last_name ?? '',
-            'name_delivery' => $order->deliveryOrder ? $order->deliveryOrder->name : ($order->name ?? ''),
-            'lastname_delivery' => $order->deliveryOrder ? $order->deliveryOrder->last_name : ($order->last_name ?? ''),
-
-            'shipping' => $order->shipping ? [
-                'id' => $order->shipping->id,
-                'name' => $order->shipping->name,
-                'price' => $shippingCost,
-                'state' => $order->shipping->state,
-            ] : null,
-            
-            'address' => [
-                'address' => $order->address ?? '',
-                'reference' => $order->reference,
-                'district' => $order->district ?? '',
-                'city' => $order->city ?? '',
-                'state' => $order->state ?? '',
-                'country' => $order->country ?? '',
-            ],
-            
-            'items' => $items,
-        ];
-    });
-
-    return response()->json([
-        'success' => true,
-        'data' => $ordersData
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'data' => $ordersData,
+            'pagination' => [
+                'current_page' => $orders->currentPage(),
+                'last_page' => $orders->lastPage(),
+                'per_page' => $orders->perPage(),
+                'total' => $orders->total(),
+            ]
+        ]);
+    }
 
     /**
      * Ver el detalle completo de una orden
      */
     public function show($orderId)
     {
-        $order = SaleOrder::with([
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'No autorizado'], 401);
+        }
+
+        // 👈 Seguridad: Verificar que la orden pertenezca al usuario
+        $order = SaleOrder::where('user_id', $user->id)->with([
             'saleDetails',
             'shipping',
             'deliveryOrder',
@@ -198,12 +217,16 @@ public function index()
      */
     public function updateStatus(Request $request, $orderId)
     {
-        // Validar datos
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'No autorizado'], 401);
+        }
+
         $validator = Validator::make($request->all(), [
             'status' => [
                 'required',
                 'string',
-                Rule::in(['CREATE', 'PAID', 'PROCESSING', 'TRACKING', 'DONE', 'CANCEL']) // 👈 Agregado PROCESSING
+                Rule::in(['CREATE', 'PAID', 'PROCESSING', 'TRACKING', 'DONE', 'CANCEL'])
             ],
         ]);
 
@@ -214,20 +237,20 @@ public function index()
             ], 422);
         }
 
-        $order = SaleOrder::find($orderId);
+        // 👈 Seguridad: Solo permitir actualizar si la orden es del usuario autenticado
+        $order = SaleOrder::where('user_id', $user->id)->find($orderId);
 
         if (!$order) {
             return response()->json([
                 'success' => false,
-                'message' => 'Orden no encontrada'
+                'message' => 'Orden no encontrada o no tienes permiso'
             ], 404);
         }
 
-        // Validar transiciones de estado permitidas
         $allowedTransitions = [
             'CREATE' => ['PAID', 'CANCEL'],
-            'PAID' => ['PROCESSING', 'CANCEL'], // 👈 Ahora PAID puede ir a PROCESSING
-            'PROCESSING' => ['TRACKING', 'CANCEL'], // 👈 NUEVO: PROCESSING puede ir a TRACKING o CANCEL
+            'PAID' => ['PROCESSING', 'CANCEL'],
+            'PROCESSING' => ['TRACKING', 'CANCEL'],
             'TRACKING' => ['DONE', 'CANCEL'],
             'DONE' => [],
             'CANCEL' => [],
@@ -243,7 +266,6 @@ public function index()
             ], 422);
         }
 
-        // Actualizar el estado
         $order->update(['status' => $newStatus]);
 
         return response()->json([
@@ -264,7 +286,6 @@ public function index()
      */
     public function statistics(Request $request)
     {
-        // Validar rango de fechas
         $validator = Validator::make($request->all(), [
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date|after_or_equal:date_from',

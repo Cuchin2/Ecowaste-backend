@@ -247,7 +247,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // MOSTRAR LAS COMPRAS DEL USUARIO
     Route::get('/sale-orders', [SaleOrderController::class, 'index']);
 
-    // RUTAS PARA GESTIONAR LAS VENTAS
+    // RUTAS PARA GESTIONAR LAS VENTAS EN EL DASHBOARD
         // Listar todas las ventas
         Route::get('/sales', [AdminSaleOrderController::class, 'index']);
         
