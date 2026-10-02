@@ -127,7 +127,7 @@ class SaleOrderController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Pedido procesado y pagado exitosamente',
-                'order_id' => $order->id
+                'order' => $order
             ]);
 
         } catch (\Exception $e) {
@@ -143,83 +143,83 @@ class SaleOrderController extends Controller
     /**
      * Listar todas las órdenes del usuario autenticado (Para "Mis compras")
      */
-public function index()
-{
-    $user = Auth::user();
+    public function index()
+    {
+        $user = Auth::user();
 
-    if (!$user) {
-        return response()->json(['error' => 'No autorizado'], 401);
-    }
+        if (!$user) {
+            return response()->json(['error' => 'No autorizado'], 401);
+        }
 
-    $orders = SaleOrder::where('user_id', $user->id)
-        ->where('status', '!=', 'CREATE') // 👈 EXCLUYE las órdenes "Sin pagar"
-        ->with(['saleDetails', 'shipping', 'deliveryOrder'])
-        ->orderBy('created_at', 'desc')
-        ->get();
+        $orders = SaleOrder::where('user_id', $user->id)
+            ->where('status', '!=', 'CREATE') // 👈 EXCLUYE las órdenes "Sin pagar"
+            ->with(['saleDetails', 'shipping', 'deliveryOrder'])
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-    $ordersData = $orders->map(function($order) {
-        $items = $order->saleDetails->map(function($detail) {
+        $ordersData = $orders->map(function($order) {
+            $items = $order->saleDetails->map(function($detail) {
+                return [
+                    'id' => $detail->id,
+                    'name' => $detail->name,
+                    'brand' => $detail->brand,
+                    'image' => $detail->image,
+                    'quantity' => (int) $detail->quantity,
+                    'price' => (float) $detail->sell_price,
+                    'subtotal' => (float) ($detail->sell_price * $detail->quantity),
+                    'color_flavor' => $detail->color_flavor,
+                    'sku' => $detail->sku,
+                    'slug' => $detail->slug,
+                ];
+            });
+
+            // ✅ 1. CÁLCULO SEGURO: Si no hay envío, el costo es 0. ¡Esto elimina el error 500!
+            $shippingCost = $order->shipping ? (float) $order->shipping->price : 0;
+            $subtotal = $items->sum('subtotal');
+            $total = $subtotal + $shippingCost;
+
             return [
-                'id' => $detail->id,
-                'name' => $detail->name,
-                'brand' => $detail->brand,
-                'image' => $detail->image,
-                'quantity' => (int) $detail->quantity,
-                'price' => (float) $detail->sell_price,
-                'subtotal' => (float) ($detail->sell_price * $detail->quantity),
-                'color_flavor' => $detail->color_flavor,
-                'sku' => $detail->sku,
-                'slug' => $detail->slug,
+                'id' => $order->id,
+                'status' => $order->status,
+                'status_label' => $order->convert(),
+                'step' => (int) $order->paso(),
+                'created_at' => $order->created_at->format('d/m/Y h:ia'),
+                'updated_at' => $order->updated_at->format('d/m/Y h:ia'),
+                'total' => (float) $total, // Usamos el total calculado de forma segura
+                
+                'shipping' => $order->shipping ? [
+                    'id' => $order->shipping->id,
+                    'name' => $order->shipping->name,
+                    'price' => $shippingCost,
+                    'state' => $order->shipping->state,
+                ] : null,
+                
+                'address' => [
+                    'address' => $order->address ?? '',
+                    'reference' => $order->reference,
+                    'district' => $order->district ?? '',
+                    'city' => $order->city ?? '',
+                    'state' => $order->state ?? '',
+                    'country' => $order->country ?? '',
+                    'zip_code' => $order->zip_code,
+                ],
+                
+                // ✅ 2. ACCESO SEGURO A PROPIEDADES: Usamos ternarios para evitar nulls
+                'name' => $order->name ?? '',
+                'lastname' => $order->last_name ?? '', // Corregido: el campo en BD es 'last_name'
+                'name_delivery' => $order->deliveryOrder ? $order->deliveryOrder->name : ($order->name ?? ''),
+                'lastname_delivery' => $order->deliveryOrder ? $order->deliveryOrder->last_name : ($order->last_name ?? ''),
+                
+                'items' => $items,
+                'total_items' => $items->sum('quantity'),
+                'subtotal' => $subtotal,
+                'shipping_cost' => $shippingCost,
             ];
         });
 
-        // ✅ 1. CÁLCULO SEGURO: Si no hay envío, el costo es 0. ¡Esto elimina el error 500!
-        $shippingCost = $order->shipping ? (float) $order->shipping->price : 0;
-        $subtotal = $items->sum('subtotal');
-        $total = $subtotal + $shippingCost;
-
-        return [
-            'id' => $order->id,
-            'status' => $order->status,
-            'status_label' => $order->convert(),
-            'step' => (int) $order->paso(),
-            'created_at' => $order->created_at->format('d/m/Y h:ia'),
-            'updated_at' => $order->updated_at->format('d/m/Y h:ia'),
-            'total' => (float) $total, // Usamos el total calculado de forma segura
-            
-            'shipping' => $order->shipping ? [
-                'id' => $order->shipping->id,
-                'name' => $order->shipping->name,
-                'price' => $shippingCost,
-                'state' => $order->shipping->state,
-            ] : null,
-            
-            'address' => [
-                'address' => $order->address ?? '',
-                'reference' => $order->reference,
-                'district' => $order->district ?? '',
-                'city' => $order->city ?? '',
-                'state' => $order->state ?? '',
-                'country' => $order->country ?? '',
-                'zip_code' => $order->zip_code,
-            ],
-            
-            // ✅ 2. ACCESO SEGURO A PROPIEDADES: Usamos ternarios para evitar nulls
-            'name' => $order->name ?? '',
-            'lastname' => $order->last_name ?? '', // Corregido: el campo en BD es 'last_name'
-            'name_delivery' => $order->deliveryOrder ? $order->deliveryOrder->name : ($order->name ?? ''),
-            'lastname_delivery' => $order->deliveryOrder ? $order->deliveryOrder->last_name : ($order->last_name ?? ''),
-            
-            'items' => $items,
-            'total_items' => $items->sum('quantity'),
-            'subtotal' => $subtotal,
-            'shipping_cost' => $shippingCost,
-        ];
-    });
-
-    return response()->json([
-        'success' => true,
-        'data' => $ordersData
-    ]);
-}
+        return response()->json([
+            'success' => true,
+            'data' => $ordersData
+        ]);
+    }
 }
