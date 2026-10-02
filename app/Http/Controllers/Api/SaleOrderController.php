@@ -123,7 +123,8 @@ class SaleOrderController extends Controller
                 // Limpiamos el carrito del usuario
                 CartItem::where('user_id', $user->id)->delete();
             });
-
+            //cambio de formato de la fecha de actualización para el frontend
+            $order->updated_at->format('d/m/Y H:i');
             return response()->json([
                 'success' => true,
                 'message' => 'Pedido procesado y pagado exitosamente',
