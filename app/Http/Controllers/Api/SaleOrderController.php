@@ -49,7 +49,7 @@ class SaleOrderController extends Controller
             return response()->json(['error' => 'No autorizado'], 401);
         }
 
-        $order = $user->saleOrders()->where('status', 'CREATE')->latest()->first();
+        $order = $user->saleOrders()->where('status', 'CREATE')->with('shipping')->latest()->first();
 
         if (!$order) {
             return response()->json(['error' => 'No hay una orden activa para procesar'], 404);
@@ -118,8 +118,17 @@ class SaleOrderController extends Controller
                 SaleOrderDetail::insert($orderDetails);
 
                 // Actualizamos el estado de la orden
-                $order->update(['status' => 'PAID']);
+                // Usamos el operador nullsafe (?->) y null coalescing (??) por si no hay envío
+                $shippingCost = (float) ($order->shipping?->price ?? 0.00);
+                $currentSubtotal = (float) $order->total;
+                $newTotal = $currentSubtotal + $shippingCost;
 
+                // 2. ACTUALIZACIÓN EN UNA SOLA CONSULTA (Más eficiente)
+                $order->update([
+                    'status' => 'PAID',
+                    'total'  => $newTotal
+                ]);
+                
                 // Limpiamos el carrito del usuario
                 CartItem::where('user_id', $user->id)->delete();
             });
