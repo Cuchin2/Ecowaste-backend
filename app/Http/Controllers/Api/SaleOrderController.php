@@ -133,7 +133,7 @@ class SaleOrderController extends Controller
                 CartItem::where('user_id', $user->id)->delete();
             });
             //cambio de formato de la fecha de actualización para el frontend
-            $order_sale_date= $order->updated_at->format('d/m/Y H:i');
+            $order_sale_date = $order->updated_at->format('d/m/Y h:ia');
 
             return response()->json([
                 'success' => true,
