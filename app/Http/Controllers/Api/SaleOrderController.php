@@ -197,6 +197,7 @@ class SaleOrderController extends Controller
                 'step' => (int) $order->paso(),
                 'created_at' => $order->created_at->format('d/m/Y h:ia'),
                 'updated_at' => $order->updated_at->format('d/m/Y h:ia'),
+                'updated_at_sm'=> $order->updated_at->format('d/m/y'),
                 'total' => (float) $total, // Usamos el total calculado de forma segura
                 
                 'shipping' => $order->shipping ? [
@@ -231,7 +232,7 @@ class SaleOrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $ordersData
+            'data' => $ordersData,
         ]);
     }
 }
