@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RegisterRequest;
 use App\Models\User;
+use App\Models\Wishlist;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -30,7 +31,16 @@ class RegisterController extends Controller
             'password' => Hash::make($data['password']),
             'avatar' => $avatarPath,
         ]);
-
+        // ✅ CREAR LA LISTA DE DESEOS POR DEFECTO
+        Wishlist::create([
+            'user_id'      => $user->id,
+            'name'         => 'Mi Lista',
+            'slug'         => \Illuminate\Support\Str::slug('Mi Lista'), // Genera automáticamente: 'mi-lista'
+            'is_default'   => true,
+            'is_public'    => false,
+            'order'        => 1,
+            // 'description' => null, // No es necesario escribirlo, tu base de datos ya le asigna null por defecto
+        ]);
         return response()->json([
             'message' => 'Usuario registrado exitosamente',
             'user' => $user,
