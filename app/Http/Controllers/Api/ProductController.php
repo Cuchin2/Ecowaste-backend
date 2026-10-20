@@ -506,40 +506,33 @@ public function shop(Request $request)
         'category_name'=>$category->name ?? null
     ]);
 }
+
 /* Productos más vendidos */
 public function mostSaled(Request $request)
 {
-    // 1. Definir cuántos productos traer (por defecto 8, o lo que envíe el frontend)
+    // 1. Definir cuántos productos traer (por defecto 8)
     $limit = $request->input('limit', 8);
 
-    // 2. Construir la consulta de agregación
+    // 2. Consulta usando subconsulta (Evita el error 1055 de MySQL)
     $topProducts = Product::select('products.*')
-        // Sumamos la cantidad de la tabla de detalles y la llamamos 'total_sold'
-        ->selectRaw('SUM(sale_order_details.quantity) as total_sold')
+        // Subconsulta que suma la cantidad para CADA producto individualmente
+        ->selectRaw('(SELECT COALESCE(SUM(quantity), 0) FROM sale_order_details WHERE sale_order_details.product_id = products.id) as total_sold')
         
-        // Unimos con la tabla de detalles usando el product_id
-        ->join('sale_order_details', 'products.id', '=', 'sale_order_details.product_id')
-        
-        // ⚠️ IMPORTANTE: Si tus órdenes tienen un estado (ej: 'completed', 'paid', 'delivered'),
-        // descomenta las siguientes líneas para NO contar productos de órdenes canceladas o pendientes.
-        // ->whereHas('saleOrder', function ($query) {
-        //     $query->where('status', 'completed'); // Ajusta 'status' y 'completed' a los nombres de tu BD
-        // })
+        // ⚠️ OPCIONAL PERO RECOMENDADO: Si tus órdenes tienen estado, filtra solo las completadas/pagadas
+        // Descomenta y ajusta 'status' y 'completed' según tu tabla sale_orders
+        // ->selectRaw('(SELECT COALESCE(SUM(sale_order_details.quantity), 0) FROM sale_order_details INNER JOIN sale_orders ON sale_order_details.sale_order_id = sale_orders.id WHERE sale_order_details.product_id = products.id AND sale_orders.status = "completed") as total_sold')
 
-        // Agrupamos por el ID del producto para que el SUM funcione correctamente por cada uno
-        ->groupBy('products.id')
-        
-        // Ordenamos de mayor cantidad vendida a menor
+        // Ordenamos de mayor a menor cantidad vendida
         ->orderByDesc('total_sold')
         
-        // Limitamos la cantidad de resultados
+        // Limitamos los resultados
         ->limit($limit)
         
-        // Cargamos las relaciones que probablemente necesite tu método $this->format()
+        // Cargamos las relaciones necesarias para tu método format()
         ->with(['brand', 'category', 'skus'])
         ->get();
 
-    // 3. Formatear la respuesta usando tu mismo método que en 'shop'
+    // 3. Formatear la respuesta
     $topProducts->transform(fn($p) => $this->format($p));
 
     return response()->json([
