@@ -30,7 +30,7 @@ use App\Http\Controllers\Api\ProductSkuImageController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Http\Controllers\Api\WishlistItemController ;
-use App\Http\Controllers\Api\WishlistShareController;
+/* use App\Http\Controllers\Api\WishlistShareController; */
 use App\Http\Controllers\Api\ColorFlavorTypeController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\CheckoutController;
@@ -224,11 +224,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // ============================================================
     // 3. (OPCIONAL) RUTAS PARA COMPARTIR LISTAS
     // ============================================================
-    Route::prefix('wishlists/{wishlist}/shares')->group(function () {
+/*     Route::prefix('wishlists/{wishlist}/shares')->group(function () {
         Route::get('/', [WishlistShareController::class, 'index']);
         Route::post('/', [WishlistShareController::class, 'store']);
         Route::delete('/{share}', [WishlistShareController::class, 'destroy']);
-    });
+    }); */
     // =============================================================
     // RUTAS - TABLA SHIPPING (ENVIOS)
     // ============================================================
