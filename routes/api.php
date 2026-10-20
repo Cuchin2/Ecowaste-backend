@@ -273,7 +273,7 @@ Route::get('octogons', [OctogonController::class,'index']);
 Route::get('ingredients', [IngredientController::class, 'index']);
 Route::get('/product-skus', [ProductSkuController::class, 'getByIds']);
 // 👇 2. Define la ruta para los productos más vendidos
-Route::get('/products/most-saled', [ProductController::class, 'mostSaled']);
+Route::get('/most-saled', [ProductController::class, 'mostSaled']);
 /* Route::get('/pruebas/backend', [PruebaController::class, 'index']); */
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
