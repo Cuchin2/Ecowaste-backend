@@ -506,6 +506,48 @@ public function shop(Request $request)
         'category_name'=>$category->name ?? null
     ]);
 }
+/* Productos más vendidos */
+public function mostSaled(Request $request)
+{
+    // 1. Definir cuántos productos traer (por defecto 8, o lo que envíe el frontend)
+    $limit = $request->input('limit', 8);
+
+    // 2. Construir la consulta de agregación
+    $topProducts = Product::select('products.*')
+        // Sumamos la cantidad de la tabla de detalles y la llamamos 'total_sold'
+        ->selectRaw('SUM(sale_order_details.quantity) as total_sold')
+        
+        // Unimos con la tabla de detalles usando el product_id
+        ->join('sale_order_details', 'products.id', '=', 'sale_order_details.product_id')
+        
+        // ⚠️ IMPORTANTE: Si tus órdenes tienen un estado (ej: 'completed', 'paid', 'delivered'),
+        // descomenta las siguientes líneas para NO contar productos de órdenes canceladas o pendientes.
+        // ->whereHas('saleOrder', function ($query) {
+        //     $query->where('status', 'completed'); // Ajusta 'status' y 'completed' a los nombres de tu BD
+        // })
+
+        // Agrupamos por el ID del producto para que el SUM funcione correctamente por cada uno
+        ->groupBy('products.id')
+        
+        // Ordenamos de mayor cantidad vendida a menor
+        ->orderByDesc('total_sold')
+        
+        // Limitamos la cantidad de resultados
+        ->limit($limit)
+        
+        // Cargamos las relaciones que probablemente necesite tu método $this->format()
+        ->with(['brand', 'category', 'skus'])
+        ->get();
+
+    // 3. Formatear la respuesta usando tu mismo método que en 'shop'
+    $topProducts->transform(fn($p) => $this->format($p));
+
+    return response()->json([
+        'data' => $topProducts,
+        'total' => $topProducts->count(),
+        'message' => 'Productos más vendidos obtenidos exitosamente'
+    ]);
+}
 /**
  * Obtener IDs de categoría y todos sus descendientes (niveles 1 y 2)
  */
