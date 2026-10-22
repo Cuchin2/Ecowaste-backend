@@ -274,6 +274,8 @@ Route::get('ingredients', [IngredientController::class, 'index']);
 Route::get('/product-skus', [ProductSkuController::class, 'getByIds']);
 // 👇 2. Define la ruta para los productos más vendidos
 Route::get('/most-saled', [ProductController::class, 'mostSaled']);
+// 👇 3. Define la ruta para los productos con ofertas
+Route::get('/flash-offers', [ProductController::class, 'flashOffers']);
 /* Route::get('/pruebas/backend', [PruebaController::class, 'index']); */
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     

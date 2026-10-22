@@ -541,6 +541,39 @@ public function mostSaled(Request $request)
         'message' => 'Productos más vendidos obtenidos exitosamente'
     ]);
 }
+/* Productos en Oferta Flash */
+public function flashOffers(Request $request)
+{
+    $limit = $request->input('limit', 8);
+
+    $products = Product::where('state', 'public')
+        // 1. Filtra: Solo productos que tengan AL MENOS un SKU con offer = true
+        ->whereHas('skus', function ($query) {
+            $query->where('offer', true);
+        })
+        // 2. Eager Load: Trae SOLO los SKUs que tienen oferta, más marca y categoría
+        ->with([
+            'skus' => function ($query) {
+                $query->where('offer', true); // 👈 La clave: filtra la relación
+            },
+            'brand',
+            'category'
+        ])
+        // 3. Ordena por el atributo 'order'
+        ->orderBy('order')
+        // 4. Limita la cantidad para el carrusel
+        ->limit($limit)
+        ->get();
+
+    // 5. Formatea la respuesta con tu método existente
+    $products->transform(fn($p) => $this->format($p));
+
+    return response()->json([
+        'data' => $products,
+        'total' => $products->count(),
+        'message' => 'Ofertas flash obtenidas exitosamente'
+    ]);
+}
 /**
  * Obtener IDs de categoría y todos sus descendientes (niveles 1 y 2)
  */
