@@ -544,7 +544,7 @@ public function mostSaled(Request $request)
 /* Productos en Oferta Flash */
 public function flashOffers(Request $request)
 {
-    $limit = $request->input('limit', 8);
+    $limit = $request->input('limit', 10);
 
     $products = Product::where('state', 'public')
         // 1. Filtra: Solo productos que tengan AL MENOS un SKU con offer = true
