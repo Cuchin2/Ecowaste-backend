@@ -48,7 +48,6 @@ class WishlistItemController extends Controller
 
         $validated = $request->validate([
             'product_sku_id' => 'required|exists:product_skus,id',
-            'quantity'       => 'sometimes|integer|min:1|max:999',
             'note'           => 'nullable|string|max:500',
         ]);
 
@@ -56,7 +55,6 @@ class WishlistItemController extends Controller
         $item = $wishlist->items()->updateOrCreate(
             ['product_sku_id' => $validated['product_sku_id']],
             [
-                'quantity' => $validated['quantity'] ?? 1,
                 'note'     => $validated['note'] ?? null,
             ]
         );
@@ -87,7 +85,6 @@ class WishlistItemController extends Controller
         }
 
         $validated = $request->validate([
-            'quantity' => 'sometimes|integer|min:1|max:999',
             'note'     => 'nullable|string|max:500',
         ]);
 
@@ -186,9 +183,8 @@ class WishlistItemController extends Controller
 
         $user = auth()->user();
 
-        // 👇 CAMBIO 1: Leer la cantidad que envió el frontend. 
-        // Si por alguna razón no llega, usa la cantidad que ya tiene en la wishlist como respaldo.
-        $quantityToAdd = (int) $request->input('quantity', $item->quantity);
+        // 👇 CLAVE: Leemos la cantidad del frontend. Si no llega, asumimos 1.
+        $quantityToAdd = (int) $request->input('quantity', 1);
 
         if ($quantityToAdd <= 0) {
             return response()->json(['error' => 'La cantidad debe ser mayor a 0'], 422);
@@ -271,16 +267,16 @@ class WishlistItemController extends Controller
                     ->first();
 
                 if ($cartItem) {
-                    $cartItem->quantity += $item->quantity;
+                    $cartItem->quantity += 1;
                     $cartItem->save();
                 } else {
                     CartItem::create([
                         'user_id'         => $user->id,
                         'product_sku_id'  => $item->product_sku_id,
-                        'quantity'        => $item->quantity,
+                        'quantity'        => 1
                     ]);
                 }
-                $item->delete();
+                /* $item->delete(); */
             }
         });
 
