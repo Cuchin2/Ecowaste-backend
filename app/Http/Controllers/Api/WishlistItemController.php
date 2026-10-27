@@ -171,53 +171,50 @@ class WishlistItemController extends Controller
     /**
      * Mover un item al carrito (y eliminarlo de la wishlist).
      */
-    public function moveToCart(Request $request, Wishlist $wishlist, WishlistItem $item)
-    {
-        if ($wishlist->user_id !== auth()->id()) {
-            return response()->json(['error' => 'No autorizado'], 403);
-        }
-
-        if ($item->wishlist_id !== $wishlist->id) {
-            return response()->json(['error' => 'El item no pertenece a esta lista'], 422);
-        }
-
-        $user = auth()->user();
-
-        // 👇 CLAVE: Leemos la cantidad del frontend. Si no llega, asumimos 1.
-        $quantityToAdd = (int) $request->input('quantity', 1);
-
-        if ($quantityToAdd <= 0) {
-            return response()->json(['error' => 'La cantidad debe ser mayor a 0'], 422);
-        }
-
-        DB::transaction(function () use ($user, $item, $quantityToAdd) {
-            // Buscar si ya existe el SKU en el carrito del usuario
-            $cartItem = CartItem::where('user_id', $user->id)
-                ->where('product_sku_id', $item->product_sku_id)
-                ->first();
-
-            if ($cartItem) {
-                // Si ya existe, SUMAMOS la cantidad que viene del frontend
-                $cartItem->quantity += $quantityToAdd;
-                $cartItem->save();
-            } else {
-                // Si no existe, creamos uno nuevo con la cantidad del frontend
-                CartItem::create([
-                    'user_id'        => $user->id,
-                    'product_sku_id' => $item->product_sku_id,
-                    'quantity'       => $quantityToAdd,
-                ]);
-            }
-
-            // 👇 CAMBIO 2: ¡ELIMINAMOS ESTA LÍNEA! 
-            // $item->delete();  <--- ¡NO LA PONGAS! Así el producto se queda en la wishlist.
-        });
-
-        return response()->json([
-            'message' => 'Item añadido al carrito correctamente',
-            'quantity_added' => $quantityToAdd
-        ]);
+public function moveToCart(Request $request, Wishlist $wishlist, WishlistItem $item)
+{
+    if ($wishlist->user_id !== auth()->id()) {
+        return response()->json(['error' => 'No autorizado'], 403);
     }
+
+    if ($item->wishlist_id !== $wishlist->id) {
+        return response()->json(['error' => 'El item no pertenece a esta lista'], 422);
+    }
+
+    $user = auth()->user();
+
+    // Leemos la cantidad del frontend. Si no llega, asumimos 1.
+    $quantityToAdd = (int) $request->input('quantity', 1);
+
+    if ($quantityToAdd <= 0) {
+        return response()->json(['error' => 'La cantidad debe ser mayor a 0'], 422);
+    }
+
+    DB::transaction(function () use ($user, $item, $quantityToAdd) {
+        // Buscar si ya existe el SKU en el carrito del usuario
+        $cartItem = CartItem::where('user_id', $user->id)
+            ->where('product_sku_id', $item->product_sku_id)
+            ->first();
+
+        if ($cartItem) {
+            // 👇 CAMBIO CLAVE: Usamos '=' para REEMPLAZAR la cantidad, no '+=' para sumar
+            $cartItem->quantity = $quantityToAdd; 
+            $cartItem->save();
+        } else {
+            // Si no existe, creamos uno nuevo con la cantidad del frontend
+            CartItem::create([
+                'user_id'        => $user->id,
+                'product_sku_id' => $item->product_sku_id,
+                'quantity'       => $quantityToAdd,
+            ]);
+        }
+    });
+
+    return response()->json([
+        'message' => 'Item añadido al carrito correctamente',
+        'quantity_added' => $quantityToAdd
+    ]);
+}
 
     /**
      * Reordenar los items de una wishlist (drag & drop).
