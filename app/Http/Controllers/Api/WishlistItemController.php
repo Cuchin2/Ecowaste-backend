@@ -174,7 +174,7 @@ class WishlistItemController extends Controller
     /**
      * Mover un item al carrito (y eliminarlo de la wishlist).
      */
-    public function moveToCart(Wishlist $wishlist, WishlistItem $item)
+    public function moveToCart(Request $request, Wishlist $wishlist, WishlistItem $item)
     {
         if ($wishlist->user_id !== auth()->id()) {
             return response()->json(['error' => 'No autorizado'], 403);
@@ -186,31 +186,41 @@ class WishlistItemController extends Controller
 
         $user = auth()->user();
 
-        DB::transaction(function () use ($user, $item) {
+        // 👇 CAMBIO 1: Leer la cantidad que envió el frontend. 
+        // Si por alguna razón no llega, usa la cantidad que ya tiene en la wishlist como respaldo.
+        $quantityToAdd = (int) $request->input('quantity', $item->quantity);
+
+        if ($quantityToAdd <= 0) {
+            return response()->json(['error' => 'La cantidad debe ser mayor a 0'], 422);
+        }
+
+        DB::transaction(function () use ($user, $item, $quantityToAdd) {
             // Buscar si ya existe el SKU en el carrito del usuario
             $cartItem = CartItem::where('user_id', $user->id)
                 ->where('product_sku_id', $item->product_sku_id)
                 ->first();
 
             if ($cartItem) {
-                // Si ya existe, sumamos la cantidad
-                $cartItem->quantity += $item->quantity;
+                // Si ya existe, SUMAMOS la cantidad que viene del frontend
+                $cartItem->quantity += $quantityToAdd;
                 $cartItem->save();
             } else {
-                // Si no existe, creamos uno nuevo
+                // Si no existe, creamos uno nuevo con la cantidad del frontend
                 CartItem::create([
-                    'user_id'         => $user->id,
-                    'product_sku_id'  => $item->product_sku_id,
-                    'quantity'        => $item->quantity,
-                    // 'price_at_add' lo puedes agregar si tu modelo lo soporta, o quitarlo
+                    'user_id'        => $user->id,
+                    'product_sku_id' => $item->product_sku_id,
+                    'quantity'       => $quantityToAdd,
                 ]);
             }
 
-            // Eliminar el item de la wishlist
-            $item->delete();
+            // 👇 CAMBIO 2: ¡ELIMINAMOS ESTA LÍNEA! 
+            // $item->delete();  <--- ¡NO LA PONGAS! Así el producto se queda en la wishlist.
         });
 
-        return response()->json(['message' => 'Item movido al carrito correctamente']);
+        return response()->json([
+            'message' => 'Item añadido al carrito correctamente',
+            'quantity_added' => $quantityToAdd
+        ]);
     }
 
     /**
