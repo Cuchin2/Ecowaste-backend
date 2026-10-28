@@ -197,8 +197,8 @@ public function moveToCart(Request $request, Wishlist $wishlist, WishlistItem $i
             ->first();
 
         if ($cartItem) {
-            // 👇 CAMBIO CLAVE: Usamos '=' para REEMPLAZAR la cantidad, no '+=' para sumar
-            $cartItem->quantity = $quantityToAdd; 
+            // 👇 CLAVE: Usamos += para SUMAR a la cantidad que ya existe en el carrito
+            $cartItem->quantity += $quantityToAdd; 
             $cartItem->save();
         } else {
             // Si no existe, creamos uno nuevo con la cantidad del frontend
