@@ -239,45 +239,51 @@ public function moveToCart(Request $request, Wishlist $wishlist, WishlistItem $i
 
         return response()->json(['message' => 'Orden actualizado correctamente']);
     }
-    public function moveMultipleToCart(Request $request, Wishlist $wishlist)
-    {
-        if ($wishlist->user_id !== auth()->id()) {
-            return response()->json(['error' => 'No autorizado'], 403);
-        }
-
-        $validated = $request->validate([
-            'item_ids' => 'required|array',
-            'item_ids.*' => 'exists:wishlist_items,id',
-            'items.*.quantity' => 'required|integer|min:1|max:999',
-        ]);
-
-        $user = auth()->user();
-
-        DB::transaction(function () use ($user, $wishlist, $validated) {
-            $items = $wishlist->items()
-                ->whereIn('id', $validated['item_ids'])
-                ->with('sku')
-                ->get();
-
-            foreach ($items as $item) {
-                $cartItem = CartItem::where('user_id', $user->id)
-                    ->where('product_sku_id', $item->product_sku_id)
-                    ->first();
-
-                if ($cartItem) {
-                    $cartItem->quantity += $quantity;
-                    $cartItem->save();
-                } else {
-                    CartItem::create([
-                        'user_id'         => $user->id,
-                        'product_sku_id'  => $item->product_sku_id,
-                        'quantity'       => $quantity,
-                    ]);
-                }
-                /* $item->delete(); */
-            }
-        });
-
-        return response()->json(['message' => 'Items movidos al carrito correctamente']);
+public function moveMultipleToCart(Request $request, Wishlist $wishlist)
+{
+    if ($wishlist->user_id !== auth()->id()) {
+        return response()->json(['error' => 'No autorizado'], 403);
     }
+
+    // 1. Validar que el frontend envíe el array 'items' con 'id' y 'quantity'
+    $validated = $request->validate([
+        'items' => 'required|array',
+        'items.*.id' => 'required|exists:wishlist_items,id',
+        'items.*.quantity' => 'required|integer|min:1|max:999',
+    ]);
+
+    $user = auth()->user();
+
+    DB::transaction(function () use ($user, $wishlist, $validated) {
+        // 2. Iterar sobre cada item enviado desde el frontend
+        foreach ($validated['items'] as $itemData) {
+            
+            // Verificar que el item realmente pertenezca a esta wishlist
+            $item = $wishlist->items()->find($itemData['id']);
+            if (!$item) continue;
+
+            $quantityToAdd = (int) $itemData['quantity'];
+
+            // Buscar si ya existe el SKU en el carrito del usuario
+            $cartItem = CartItem::where('user_id', $user->id)
+                ->where('product_sku_id', $item->product_sku_id)
+                ->first();
+
+            if ($cartItem) {
+                // Sumar la cantidad específica de este item
+                $cartItem->quantity += $quantityToAdd;
+                $cartItem->save();
+            } else {
+                // Crear uno nuevo con la cantidad específica
+                CartItem::create([
+                    'user_id'        => $user->id,
+                    'product_sku_id' => $item->product_sku_id,
+                    'quantity'       => $quantityToAdd,
+                ]);
+            }
+        }
+    });
+
+    return response()->json(['message' => 'Items movidos al carrito correctamente']);
+}
 }
