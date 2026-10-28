@@ -216,7 +216,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Mover item al carrito (individual)
         Route::post('/{item}/move-to-cart', [WishlistItemController::class, 'moveToCart']);
         // ✅ NUEVA: Mover múltiples items al carrito (seleccionados)
-        Route::post('/move-multiple', [WishlistItemController::class, 'moveMultipleToCart']);
+        Route::post('/move-multiple-to-cart', [WishlistItemController::class, 'moveMultipleToCart']);
         // Reordenar items dentro de la lista
         Route::post('/reorder', [WishlistItemController::class, 'reorder']);
     });
