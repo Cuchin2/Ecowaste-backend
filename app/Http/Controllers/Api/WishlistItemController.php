@@ -248,6 +248,7 @@ public function moveToCart(Request $request, Wishlist $wishlist, WishlistItem $i
         $validated = $request->validate([
             'item_ids' => 'required|array',
             'item_ids.*' => 'exists:wishlist_items,id',
+            'items.*.quantity' => 'required|integer|min:1|max:999',
         ]);
 
         $user = auth()->user();
@@ -264,13 +265,13 @@ public function moveToCart(Request $request, Wishlist $wishlist, WishlistItem $i
                     ->first();
 
                 if ($cartItem) {
-                    $cartItem->quantity += 1;
+                    $cartItem->quantity += $quantity;
                     $cartItem->save();
                 } else {
                     CartItem::create([
                         'user_id'         => $user->id,
                         'product_sku_id'  => $item->product_sku_id,
-                        'quantity'        => 1
+                        'quantity'       => $quantity,
                     ]);
                 }
                 /* $item->delete(); */
