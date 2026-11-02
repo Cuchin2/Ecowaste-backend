@@ -33,7 +33,6 @@ class BrandController extends Controller
         // 👈 3. Si son muchas, considera cambiar ->get() por ->paginate(20).
         
         $brands = Brand::select('id', 'name', 'slug', 'code', 'image', 'is_active', 'order')
-            ->where('is_active', true) 
             ->orderBy('order')
             ->orderBy('name')
             ->get();
