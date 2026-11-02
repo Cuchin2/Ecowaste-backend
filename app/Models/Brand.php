@@ -18,10 +18,12 @@ class Brand extends Model
         'image',
         'description',
         'order',
+        'is_active',
     ];
 
     protected $casts = [
         'order' => 'integer',
+        'is_active' => 'boolean',
     ];
     // Auto-generate slug from name when creating
     protected static function boot()
@@ -43,5 +45,9 @@ class Brand extends Model
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
+    }
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
     }
 }

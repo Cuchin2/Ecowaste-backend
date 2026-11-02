@@ -28,8 +28,17 @@ class BrandController extends Controller
 
     public function index()
     {
-        $brands = Brand::orderBy('order')->orderBy('name')->get();
-        return response()->json($brands->map(fn($b) => $this->format($b)));
+        // 👈 1. 'select': Solo trae las columnas necesarias (ahorra memoria y transferencia de red).
+        // 👈 2. 'where': Si es una API pública, solo trae las activas (ahorra procesamiento).
+        // 👈 3. Si son muchas, considera cambiar ->get() por ->paginate(20).
+        
+        $brands = Brand::select('id', 'name', 'slug', 'code', 'image', 'is_active', 'order')
+            ->where('is_active', true) 
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($brands); // El accessor 'image_url' se agrega automáticamente
     }
 
     public function store(Request $request)
@@ -130,5 +139,24 @@ class BrandController extends Controller
             }
         });
         return response()->json(['message' => 'Orden actualizado']);
+    }
+    /**
+ * Actualiza solo el estado activo/inactivo de una marca
+ * Optimizado para checkboxes en tablas (respuesta rápida y ligera)
+ */
+    public function updateActive(Request $request, Brand $brand)
+    {
+        $request->validate([
+            'is_active' => 'required|boolean',
+        ]);
+
+        $brand->update([
+            'is_active' => $request->boolean('is_active')
+        ]);
+
+        return response()->json([
+            'message' => 'Estado actualizado',
+            'is_active' => $brand->is_active
+        ]);
     }
 }
