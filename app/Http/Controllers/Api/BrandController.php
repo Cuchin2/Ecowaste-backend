@@ -39,7 +39,17 @@ class BrandController extends Controller
 
         return response()->json($brands); // El accessor 'image_url' se agrega automáticamente
     }
+    public function publicActive()
+    {
+        $brands = Brand::active() // 👈 Usa el scope: ->where('is_active', true)
+            ->select('id', 'name', 'slug', 'image') // 👈 Solo lo estrictamente necesario para la UI pública
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get();
 
+        // El accessor 'image_url' se agregará automáticamente al convertir a JSON
+        return response()->json($brands);
+    }
     public function store(Request $request)
     {
         $data = $request->validate([

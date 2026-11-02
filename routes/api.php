@@ -277,6 +277,8 @@ Route::get('/product-skus', [ProductSkuController::class, 'getByIds']);
 Route::get('/most-saled', [ProductController::class, 'mostSaled']);
 // 👇 3. Define la ruta para los productos con ofertas
 Route::get('/flash-offers', [ProductController::class, 'flashOffers']);
+// Ruta para las marcas activas para tienda
+Route::get('/brands/active', [BrandController::class, 'publicActive']);
 /* Route::get('/pruebas/backend', [PruebaController::class, 'index']); */
 /* Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     
