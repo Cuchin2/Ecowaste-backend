@@ -25,8 +25,7 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'order' => 'integer',
-        'sell_price' => 'decimal:2',
+        'order' => 'integer'
     ];
 
     // Relaciones
