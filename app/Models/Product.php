@@ -21,7 +21,6 @@ class Product extends Model
         'brand_id',
         'code',
         'sell_price',
-        'offer_price', // 👈 AGREGADO
         'order',
     ];
 
