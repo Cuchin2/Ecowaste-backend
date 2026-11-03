@@ -116,6 +116,7 @@ public function show(Product $product)
             'category_id'         => 'nullable|exists:categories,id',
             'brand_id'            => 'nullable|exists:brands,id',
             'sell_price'          => 'nullable|string',
+            'offer_price'         => 'nullable|string|max:50', // 👈 AGREGADO
             'image'               => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'img_nutrition'       => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'remove_image'        => 'sometimes|boolean',
@@ -267,34 +268,37 @@ public function show(Product $product)
         }
         //
         //
-        // =========================================================================
-            // 👇 NUEVO: CÁLCULO Y ACTUALIZACIÓN DEL RANGO DE PRECIOS (sell_price)
+            // =========================================================================
+            // 👇 CÁLCULO Y ACTUALIZACIÓN DE RANGOS DE PRECIOS (Normal y Oferta)
             // =========================================================================
             
-            // 1. Recargamos los SKUs para tener los datos más frescos (incluyendo cambios de syncSkus o variantes)
+            // 1. Recargamos los SKUs para tener los datos más frescos
             $product->load('skus');
 
-            // 2. Calculamos el "precio efectivo" de cada SKU (oferta si aplica, si no, precio normal)
-            $effectivePrices = $product->skus->map(function ($sku) {
-                // Si tiene oferta y el precio de oferta es mayor a 0, usamos ese. Si no, el precio normal.
-                $price = ($sku->offer && $sku->offer_price > 0) ? (float) $sku->offer_price : (float) $sku->sell_price;
-                return $price > 0 ? $price : null; // Ignoramos precios en 0 o null para el cálculo del rango
-            })->filter()->values(); // filter() elimina los null, values() reindexa
+            // 2. Calcular Rango de Precio NORMAL (sell_price)
+            $normalPrices = $product->skus->map(fn($sku) => (float) $sku->sell_price)
+                ->filter(fn($price) => $price > 0) // Ignoramos precios en 0
+                ->values();
 
-            // 3. Si hay precios válidos, generamos el string "MIN - MAX"
-            if ($effectivePrices->isNotEmpty()) {
-                $minPrice = $effectivePrices->min();
-                $maxPrice = $effectivePrices->max();
+            $sellPriceRange = $normalPrices->isNotEmpty()
+                ? number_format($normalPrices->min(), 2, '.', '') . ' - ' . number_format($normalPrices->max(), 2, '.', '')
+                : null;
 
-                // Formateamos a 2 decimales con punto (ej: "12.00 - 45.00")
-                $priceRange = number_format($minPrice, 2, '.', '') . ' - ' . number_format($maxPrice, 2, '.', '');
-                
-                // Actualizamos solo este campo en la base de datos
-                $product->update(['sell_price' => $priceRange]);
-            } else {
-                // Si no hay precios definidos en los SKUs, lo dejamos nulo o en "0.00"
-                $product->update(['sell_price' => null]);
-            }
+            // 3. Calcular Rango de Precio de OFERTA (offer_price)
+            // Solo consideramos SKUs que tienen offer == true y un offer_price > 0
+            $offerPrices = $product->skus->filter(fn($sku) => $sku->offer && (float) $sku->offer_price > 0)
+                ->map(fn($sku) => (float) $sku->offer_price)
+                ->values();
+
+            $offerPriceRange = $offerPrices->isNotEmpty()
+                ? number_format($offerPrices->min(), 2, '.', '') . ' - ' . ' ' . number_format($offerPrices->max(), 2, '.', '') // Ej: "10.00 - 35.00"
+                : null;
+
+            // 4. Actualizar ambos campos en el producto padre
+            $product->update([
+                'sell_price'  => $sellPriceRange,
+                'offer_price' => $offerPriceRange,
+            ]);
             // =========================================================================
             return response()->json($this->format($product->fresh()));
         } catch (\Exception $e) {
