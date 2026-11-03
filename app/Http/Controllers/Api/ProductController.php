@@ -115,7 +115,7 @@ public function show(Product $product)
             'state'               => 'sometimes|in:erase,public,programer,cancel',
             'category_id'         => 'nullable|exists:categories,id',
             'brand_id'            => 'nullable|exists:brands,id',
-            'sell_price'          => 'nullable|numeric|min:0',
+            'sell_price'          => 'nullable|string',
             'image'               => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'img_nutrition'       => 'nullable|file|mimes:jpeg,png,jpg,gif,webp,svg|max:2048',
             'remove_image'        => 'sometimes|boolean',
@@ -266,6 +266,36 @@ public function show(Product $product)
             }
         }
         //
+        //
+        // =========================================================================
+            // 👇 NUEVO: CÁLCULO Y ACTUALIZACIÓN DEL RANGO DE PRECIOS (sell_price)
+            // =========================================================================
+            
+            // 1. Recargamos los SKUs para tener los datos más frescos (incluyendo cambios de syncSkus o variantes)
+            $product->load('skus');
+
+            // 2. Calculamos el "precio efectivo" de cada SKU (oferta si aplica, si no, precio normal)
+            $effectivePrices = $product->skus->map(function ($sku) {
+                // Si tiene oferta y el precio de oferta es mayor a 0, usamos ese. Si no, el precio normal.
+                $price = ($sku->offer && $sku->offer_price > 0) ? (float) $sku->offer_price : (float) $sku->sell_price;
+                return $price > 0 ? $price : null; // Ignoramos precios en 0 o null para el cálculo del rango
+            })->filter()->values(); // filter() elimina los null, values() reindexa
+
+            // 3. Si hay precios válidos, generamos el string "MIN - MAX"
+            if ($effectivePrices->isNotEmpty()) {
+                $minPrice = $effectivePrices->min();
+                $maxPrice = $effectivePrices->max();
+
+                // Formateamos a 2 decimales con punto (ej: "12.00 - 45.00")
+                $priceRange = number_format($minPrice, 2, '.', '') . ' - ' . number_format($maxPrice, 2, '.', '');
+                
+                // Actualizamos solo este campo en la base de datos
+                $product->update(['sell_price' => $priceRange]);
+            } else {
+                // Si no hay precios definidos en los SKUs, lo dejamos nulo o en "0.00"
+                $product->update(['sell_price' => null]);
+            }
+            // =========================================================================
             return response()->json($this->format($product->fresh()));
         } catch (\Exception $e) {
             return response()->json(['error' => 'Error al actualizar: ' . $e->getMessage()], 500);
