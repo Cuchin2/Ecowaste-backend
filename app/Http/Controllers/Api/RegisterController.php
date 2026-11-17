@@ -34,8 +34,8 @@ class RegisterController extends Controller
         // ✅ CREAR LA LISTA DE DESEOS POR DEFECTO
         Wishlist::create([
             'user_id'      => $user->id,
-            'name'         => 'Mi Lista',
-            'slug'         => \Illuminate\Support\Str::slug('Mi Lista'), // Genera automáticamente: 'mi-lista'
+            'name'         => 'Wishlist',
+            'slug'         => \Illuminate\Support\Str::slug('Wishlist'), // Genera automáticamente: 'mi-lista'
             'is_default'   => true,
             'is_public'    => false,
             'order'        => 1,
