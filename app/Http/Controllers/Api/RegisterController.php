@@ -26,7 +26,7 @@ class RegisterController extends Controller
         // Crear el usuario
         $user = User::create([
             'name' => $data['name'],
-            'lastname' => $data['lastname'],
+/*             'lastname' => $data['lastname'], */
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'avatar' => $avatarPath,
