@@ -35,6 +35,7 @@ class RegisterController extends Controller
         $user->profile()->create([
             'paternal_lastname' => $data['lastname']?? null,
             'maternal_lastname' => $data['maternal_lastname'] ?? null,
+            'document_number' => null,
             // Los demás campos (documento, teléfono) quedan null por defecto en la BD
         ]);
         // ✅ CREAR LA LISTA DE DESEOS POR DEFECTO
