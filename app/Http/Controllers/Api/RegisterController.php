@@ -34,7 +34,7 @@ class RegisterController extends Controller
         // Usamos ?? null por si el frontend no envía estos campos en el registro inicial
         $user->profile()->create([
             'paternal_lastname' => $data['lastname']?? null,
-            'maternal_lastname' => $data['maternal_lastname'] ?? null,
+            'maternal_lastname' => $data['maternal_lastname'] ?? '',
             'document_number' => null,
             // Los demás campos (documento, teléfono) quedan null por defecto en la BD
         ]);
