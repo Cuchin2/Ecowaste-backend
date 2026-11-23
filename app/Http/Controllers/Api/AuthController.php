@@ -24,11 +24,12 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $user->tokens()->delete();
-
+        /* $user->tokens()->delete(); */
+        $deviceName = $request->input('device_name', 'Navegador Web');
         $token = $user->createToken("react-token")->plainTextToken;
 
         return response()->json([
+            "message" => "Inicio de sesión exitoso",
             "token" => $token,
             "user" => $user
         ]);
