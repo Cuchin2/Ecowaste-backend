@@ -31,18 +31,7 @@ class ProfileController extends Controller
         // Actualizar el nombre del usuario (solo se guarda en `name`)
         $user->name = $request->first_name;
         $user->save();
-
-        // Crear o actualizar el perfil
-        $profile = $user->profile()->updateOrCreate(
-            ['user_id' => $user->id],
-            $request->only([
-                'paternal_lastname',
-                'maternal_lastname',
-                'document_type',
-                'document_number',
-                'phone',
-            ])
-        );
+        $user->profile()->update($validated);
 
         return response()->json([
             'message' => 'Datos actualizados correctamente',
