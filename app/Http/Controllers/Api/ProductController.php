@@ -41,8 +41,8 @@ private function format(Product $product): array
         'sell_price'        => $product->sell_price,
         
         // URLs de imagen (ya transformadas)
-        'image_url'         => $this->imageUrl($product->image),
-        'img_nutrition_url' => $this->imageUrl($product->img_nutrition),
+        'image_url'         => $product->image,
+        'img_nutrition_url' => $product->img_nutrition,
         
         // Relaciones (solo lo necesario)
         'brand'             => [
