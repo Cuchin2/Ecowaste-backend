@@ -23,13 +23,43 @@ class ProductController extends Controller
         return $path ? Storage::url($path) : null;
     }
 
-    private function format(Product $product): Product
+/*     private function format(Product $product): Product
     {
         $product->image_url = $this->imageUrl($product->image);
         $product->img_nutrition_url = $this->imageUrl($product->img_nutrition);
         return $product;
-    }
-
+    } */
+/**
+ * ✅ Retorna un array ligero con solo los campos necesarios para el listado
+ */
+private function format(Product $product): array
+{
+    return [
+        'id'                => $product->id,
+        'name'              => $product->name,
+        'slug'              => $product->slug,
+        'sell_price'        => $product->sell_price,
+        
+        // URLs de imagen (ya transformadas)
+        'image_url'         => $this->imageUrl($product->image),
+        'img_nutrition_url' => $this->imageUrl($product->img_nutrition),
+        
+        // Relaciones (solo lo necesario)
+        'brand'             => [
+            'name' => $product->brand?->name,
+        ],
+        'category'          => [
+            'name' => $product->category?->name,
+            'slug' => $product->category?->slug,
+        ],
+        
+        // ✅ Agregados SQL (ya vienen calculados por la query)
+        'has_offer'         => (bool) $product->has_offer,
+        'min_price'         => $product->skus_min_sell_price,
+        'max_price'         => $product->skus_max_sell_price,
+        'sku_count'         => $product->skus_count,
+    ];
+}
     public function index(Request $request)
     {
         $products = Product::with(['category', 'brand'])
@@ -481,15 +511,26 @@ private function generateSkuName(Product $product, ColorFlavor $colorFlavor, Siz
 }
 
 /* Por Categoría para tienda SHOP */
+/* Por Categoría para tienda SHOP */
 public function shop(Request $request)
 {
     $query = Product::query()
-        ->with(['category', 'brand', 'skus'])
-        ->where('state', 'public') // solo productos públicos
+        ->select('id', 'name', 'slug', 'sell_price', 'image', 'img_nutrition', 'brand_id', 'category_id')
+        ->with([
+            'category:id,name,slug',
+            'brand:id,name,order', // ✅ Agregado 'order' para el orderBy de la relación
+        ])
+        ->withExists([
+            'skus as has_offer' => fn($q) => $q->where('offer', true)
+        ])
+        ->withMin('skus', 'sell_price')
+        ->withMax('skus', 'sell_price')
+        ->withCount('skus')
+        ->where('state', 'public')
         ->orderBy('order')
         ->orderBy('name');
 
-    // 🔍 Filtro por categoría (slug) - incluye subcategorías hasta nivel 2
+    // 🔍 Filtro por categoría
     if ($request->has('categoria')) {
         $categorySlug = $request->input('categoria');
         $category = Category::where('slug', $categorySlug)->first();
@@ -497,7 +538,6 @@ public function shop(Request $request)
             $categoryIds = $this->getCategoryIdsWithDescendants($category);
             $query->whereIn('category_id', $categoryIds);
         } else {
-            // Si la categoría no existe, devolver vacío
             return response()->json([
                 'data' => [],
                 'total' => 0,
@@ -506,15 +546,9 @@ public function shop(Request $request)
         }
     }
 
-    // 🔎 Búsqueda por texto (nombre del producto o marca)
+    // 🔎 Búsqueda (usando el scope del modelo)
     if ($request->has('search')) {
-        $search = $request->input('search');
-        $query->where(function ($q) use ($search) {
-            $q->where('name', 'LIKE', "%{$search}%")
-              ->orWhereHas('brand', function ($q2) use ($search) {
-                  $q2->where('name', 'LIKE', "%{$search}%");
-              });
-        });
+        $query->search($request->input('search')); // ✅ Una sola línea
     }
 
     // 📊 Ordenamiento
@@ -530,18 +564,16 @@ public function shop(Request $request)
             $query->orderBy('sell_price', 'asc');
             break;
         default:
-            // ya ordenado por 'order', 'name' al inicio
             break;
     }
 
-    // 🚀 Devuelve TODOS los productos (sin paginación)
     $products = $query->get();
-    $products->transform(fn($p) => $this->format($p));
+    $formatted = $products->map(fn($p) => $this->format($p));
 
     return response()->json([
-        'data' => $products,
-        'total' => $products->count(),
-        'category_name'=>$category->name ?? null
+        'data'          => $formatted,
+        'total'         => $formatted->count(),
+        'category_name' => $category->name ?? null,
     ]);
 }
 
